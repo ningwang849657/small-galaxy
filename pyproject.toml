@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "small-galaxy"
+version = "0.2.0"
+description = "只跑在本机的科研时间仪表盘：自动记录电脑活动，渲染成一页可深度自定义的可视化"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["time-tracking", "productivity", "dashboard", "self-hosted", "privacy"]
+authors = [{ name = "Ning Wang" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: X11 Applications",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: MacOS X",
+    "Intended Audience :: End Users/Desktop",
+    "Natural Language :: Chinese (Simplified)",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Topic :: Office/Business :: Scheduling",
+]
+# 全部标准库，故意不引入任何第三方依赖：打包和长期维护的成本都低一个数量级。
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/ningwang849657/small-galaxy"
+Documentation = "https://github.com/ningwang849657/small-galaxy/blob/main/docs/manual.md"
+Issues = "https://github.com/ningwang849657/small-galaxy/issues"
+
+[project.scripts]
+small-galaxy = "smallgalaxy.dashboard:main"
+small-galaxy-daemon = "smallgalaxy.lab_tracker:main"
+small-galaxy-report = "smallgalaxy.summary:main"
+
+[tool.setuptools]
+packages = ["smallgalaxy"]
+
+[tool.setuptools.package-data]
+smallgalaxy = ["assets/*.css", "assets/*.js", "assets/icons/*"]

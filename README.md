@@ -54,10 +54,10 @@
 
 | 系统 | 取空闲时间 | 取窗口标题 | 额外依赖 |
 | --- | --- | --- | --- |
-| Linux / X11 | `xprintidle` | `xprop` | `sudo apt install xprintidle` |
+| Linux / X11 | `libXss`（ctypes 直调） | `libX11`（ctypes 直调） | **无** |
 | Linux / Wayland（GNOME） | Mutter 的 D-Bus 接口 | ⚠️ 拿不到 | `gdbus`（glib2 自带） |
 | Linux / Wayland（KDE 等） | `org.freedesktop.ScreenSaver` | ⚠️ 拿不到 | 同上 |
-| Windows 10/11 | `GetLastInputInfo` | `GetForegroundWindow` | 无 |
+| Windows 10/11 | `GetLastInputInfo` | `GetForegroundWindow` | **无** |
 | macOS | `ioreg` 的 `HIDIdleTime` | `osascript` | 无（标题需「辅助功能」授权） |
 
 ⚠️ **Wayland 读不到窗口标题**，这是它有意的安全设计，不是缺陷。时间统计完全正常，只是「娱乐时间」不会被单独拆出来。
@@ -65,23 +65,48 @@
 先确认你这台机器能用哪个后端：
 
 ```bash
-python3 probes.py     # 打印选中的后端、当前空闲秒数和窗口标题
+python3 -m smallgalaxy.probes    # 打印选中的后端、当前空闲秒数和窗口标题
 ```
 
-## 快速开始
+## 安装
+
+**Linux —— 下载 AppImage，双击即用**
+
+到 [Releases](https://github.com/ningwang849657/small-galaxy/releases) 下载 `SmallGalaxy-x86_64.AppImage`：
+
+```bash
+chmod +x SmallGalaxy-x86_64.AppImage
+./SmallGalaxy-x86_64.AppImage              # 打开仪表盘
+./SmallGalaxy-x86_64.AppImage --daemon     # 后台开始记录
+```
+
+不需要装 Python 包，也不需要 `apt install` 任何东西（只用到系统自带的 python3 和 X11 库）。
+
+**任意平台 —— pip**
+
+```bash
+pip install small-galaxy
+
+small-galaxy            # 打开仪表盘
+small-galaxy-daemon     # 前台跑采样，确认有数据进来后再配开机自启
+small-galaxy-report     # 命令行日报/周报
+```
+
+**从源码跑**
 
 ```bash
 git clone https://github.com/ningwang849657/small-galaxy.git
 cd small-galaxy
-python3 lab_tracker.py     # 前台跑，确认有数据进来，Ctrl+C 停止
-python3 dashboard.py       # 打开仪表盘
+python3 -m smallgalaxy.lab_tracker    # 采样
+python3 -m smallgalaxy.dashboard      # 仪表盘
 ```
 
-想开机自启，`autostart/` 里三个平台的模板都有（Linux 的 systemd unit、macOS 的 launchd plist、Windows 的启动脚本），装法见[详细说明](docs/manual.md)。
+开机自启的模板在 `autostart/`（Linux systemd unit、macOS launchd plist、Windows 启动脚本），装法见[详细说明](docs/manual.md)。
 
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py'   # 单元测试
 python3 tests/browser_smoke.py                          # 浏览器端到端（需 Chrome）
+./packaging/build-appimage.sh                           # 自己打 AppImage
 ```
 
 ## 这些数字不等于科研产出

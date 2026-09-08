@@ -7,10 +7,9 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from dashboard import regenerate_dashboard_html
-from probes import detect_probe, unsupported_message
-from summary import FUN_KEYWORDS_PATH
+from .dashboard import regenerate_dashboard_html
+from .probes import detect_probe, unsupported_message
+from .summary import FUN_KEYWORDS_PATH
 
 LOG_DIR = Path.home() / ".lab_tracker" / "logs"
 LOCK_PATH = Path.home() / ".lab_tracker" / "lab_tracker.lock"

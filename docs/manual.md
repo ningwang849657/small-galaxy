@@ -99,9 +99,9 @@ GitHub 头像在生成 HTML 时由 `icons/github-avatar.jpg` 编码成 data URI 
 curl -sL 'https://github.com/ningwang849657.png?size=192' -o icons/github-avatar.jpg
 ```
 
-用户名写在 `dashboard.py` 的 `GITHUB_USER`。文件缺失时页面会跳过这块署名，不会报错。
+用户名写在 `smallgalaxy/dashboard.py` 的 `GITHUB_USER`。文件缺失时页面会跳过这块署名，不会报错。
 
-界面源文件：`dashboard.py`（数据和基础模板）、`dashboard.css`（样式）、`dashboard-enhancements.js`（统计交互）、`dashboard-decor.js`（装饰画）、`dashboard-personalization.js`（外观和音乐）。CSS/JS 在生成时内嵌。
+界面源文件都在 `smallgalaxy/` 下：`dashboard.py`（数据和基础模板）、`assets/dashboard.css`（样式）、`assets/dashboard-enhancements.js`（统计交互）、`assets/dashboard-decor.js`（装饰画）、`assets/dashboard-personalization.js`（外观和音乐）。CSS/JS 在生成时内嵌。
 双击原桌面图标会自动启动 `dashboard_server.py`，打开 `http://127.0.0.1:8766`。服务仅监听本机，提供仪表盘、汇总 JSON 和音乐目录里的音频文件，不开放原始日志或任意文件。服务只用 Python 标准库，重启电脑后下次打开图标会重新启动。端口已被其他程序占用时会报错，不会关闭其他程序。
 旧的 `file://` 页面仍可查看，但局部数据更新和在线播放器请使用桌面图标打开的新地址；由于浏览器按地址隔离存储，旧文件页上的偏好不会自动迁移。
 修改 Python 后需 `systemctl --user restart lab-tracker.service`，避免常驻进程使用旧模板。测试：`python3 -m unittest discover -s tests -p 'test_*.py'`。
@@ -111,20 +111,22 @@ curl -sL 'https://github.com/ningwang849657.png?size=192' -o icons/github-avatar
 
 自动记录"电脑在被使用"的时间段，据此推算每天到达/离开实验室的时间，以及排除中途长时间无操作（开会、发呆、离开工位）后的"有效科研时间"。
 
-原理：假设这台台式机只在你人在实验室时会被使用，通过 `xprintidle` 每 60 秒采样一次系统空闲秒数，同时用 `xprop` 记录当前前台窗口的标题（用于把刷 bilibili/YouTube 的时间单独归为"娱乐"），写入按天分文件的 CSV 日志，再由 `summary.py` / `dashboard.py` 汇总统计、可视化。
+原理：假设这台台式机只在你人在实验室时会被使用，每 60 秒采样一次系统空闲秒数（Linux/X11 走 ctypes 直调 libXss，无需外部命令），同时记录当前前台窗口的标题（用于把刷 bilibili/YouTube 的时间单独归为"娱乐"），写入按天分文件的 CSV 日志，再由 `smallgalaxy/summary.py` / `smallgalaxy/dashboard.py` 汇总统计、可视化。
 
 ## 目录结构
 
 ```
-lab_tracker.py               后台采样守护进程（自带单实例文件锁；每 5 分钟顺带重新生成一次仪表盘）
-summary.py                   统计核心逻辑 + 命令行报告，dashboard.py 和 lab_tracker.py 都复用它的计算函数
-dashboard.py                  生成仪表盘 HTML（自包含，无需联网/服务器）并用默认浏览器打开
-desktop/lab-tracker.desktop  桌面图标 / 应用菜单的启动器文件（应用名 小银河），Exec 指向 dashboard.py
-icons/galaxy.svg              小银河的图标（星系插画）
-icons/github-avatar.jpg       GitHub 头像，生成页面时编码成 data URI 内嵌
+smallgalaxy/lab_tracker.py    后台采样守护进程（自带单实例文件锁；每 5 分钟顺带重新生成一次仪表盘）
+smallgalaxy/summary.py        统计核心逻辑 + 命令行报告，dashboard 和 lab_tracker 都复用它的计算函数
+smallgalaxy/dashboard.py      生成仪表盘 HTML（自包含，无需联网/服务器）并用默认浏览器打开
+smallgalaxy/assets/           CSS / JS / 图标，生成时内嵌进 HTML；pip 和 AppImage 都会带上
+desktop/lab-tracker.desktop  桌面图标 / 应用菜单的启动器文件（应用名 小银河）
+smallgalaxy/assets/icons/     小银河的图标（星系插画）和 GitHub 头像（生成页面时编码成 data URI 内嵌）
 autostart/                    开机自启模板：Linux 的 systemd unit、macOS 的 launchd plist、Windows 的启动脚本
-probes.py                     各平台取"空闲时间"和"窗口标题"的后端，上层代码不感知平台差异
-tests/make_fake_day.py       生成模拟数据，验证 summary.py 计算逻辑（不依赖 xprintidle）
+smallgalaxy/probes.py         各平台取"空闲时间"和"窗口标题"的后端，上层代码不感知平台差异
+packaging/build-appimage.sh   打 Linux AppImage
+pyproject.toml                pip 打包配置（零第三方依赖）
+tests/make_fake_day.py       生成模拟数据，验证统计逻辑（不依赖任何采样后端）
 ```
 
 日志数据写在 `~/.lab_tracker/logs/YYYY-MM-DD.csv`，仪表盘文件在 `~/.lab_tracker/dashboard.html`，背景音乐放在 `~/.lab_tracker/music/`，娱乐关键词配置在 `~/.lab_tracker/fun_keywords.txt`，单实例锁文件在 `~/.lab_tracker/lab_tracker.lock`（都和代码目录分开，不受项目目录移动/删除影响）。
@@ -146,7 +148,7 @@ xprintidle
 ## 2. 手动测试守护进程（不装 systemd，先跑几分钟看看）
 
 ```bash
-python3 /home/ning/lab_tracker/lab_tracker.py
+small-galaxy-daemon
 ```
 
 前台运行，Ctrl+C 停止。跑 1-2 分钟后检查是否生成了日志：
@@ -163,7 +165,7 @@ cat ~/.lab_tracker/logs/$(date +%F).csv
 
 ```bash
 mkdir -p ~/.config/systemd/user
-cp /home/ning/lab_tracker/autostart/lab-tracker.service ~/.config/systemd/user/
+cp autostart/lab-tracker.service ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now lab-tracker.service
 ```
@@ -209,23 +211,23 @@ Environment=XAUTHORITY=/run/user/1000/gdm/Xauthority
 
 ```bash
 # 今天
-python3 /home/ning/lab_tracker/summary.py
+small-galaxy-report
 
 # 指定某一天
-python3 /home/ning/lab_tracker/summary.py --date 2026-07-08
+small-galaxy-report --date 2026-07-08
 
 # 最近 7 天周报（以某天为截止日，默认今天）
-python3 /home/ning/lab_tracker/summary.py --week
+small-galaxy-report --week
 
 # 调整"有效科研时间"的空闲阈值（默认 300 秒 = 5 分钟）
-python3 /home/ning/lab_tracker/summary.py --threshold 600
+small-galaxy-report --threshold 600
 ```
 
 想每天/每周自己看，可以加个 shell 别名（写进 `~/.bashrc`）：
 
 ```bash
-alias labreport='python3 /home/ning/lab_tracker/summary.py'
-alias labweek='python3 /home/ning/lab_tracker/summary.py --week'
+alias labreport='small-galaxy-report'
+alias labweek='small-galaxy-report --week'
 ```
 
 ## 5. 仪表盘：桌面图标点击运行（应用名 小银河）
@@ -240,21 +242,21 @@ alias labweek='python3 /home/ning/lab_tracker/summary.py --week'
 
 图表配色用 dataviz 校验脚本验证过（主蓝 #3B72D9 在暖色表面上通过亮度带/色度/色觉安全/对比度四项检查；两个系列的色觉色差 ΔE≈74，远超安全线）。
 
-`summary.py` 和 `dashboard.py` 共用同一套 `build_day_segments` / `compute_stats` 计算逻辑，两边数字保证一致。仪表盘本身是"生成一次静态网页"，不是常驻服务：每次点桌面图标都会用最新数据重新生成并打开；如果开着浏览器标签页不关，`lab_tracker.py` 守护进程每 5 分钟会在后台重新生成一次这个文件，网页自己每 60 秒 `<meta refresh>` 一次，所以放着不动也会准实时刷新，不需要手动点刷新按钮。
+`summary.py` 和 `dashboard.py` 共用同一套 `build_day_segments` / `compute_stats` 计算逻辑，两边数字保证一致。仪表盘本身是"生成一次静态网页"，不是常驻服务：每次点桌面图标都会用最新数据重新生成并打开；如果开着浏览器标签页不关，守护进程每 5 分钟会在后台重新生成一次这个文件，网页自己每 60 秒 `<meta refresh>` 一次，所以放着不动也会准实时刷新，不需要手动点刷新按钮。
 
 图标是 `icons/galaxy.svg`（深空底色 + 旋臂光带 + 光核星点，纯 SVG 渐变绘制），`.desktop` 文件里 `Icon=` 直接写了这个文件的绝对路径，不依赖系统图标主题。想换图标的话直接编辑/替换这个 svg 文件即可，不需要改 `.desktop`。
 
 先手动跑一次，确认浏览器能正常打开仪表盘：
 
 ```bash
-python3 /home/ning/lab_tracker/dashboard.py
+small-galaxy
 ```
 
 确认没问题后，把桌面图标装上：
 
 ```bash
 mkdir -p ~/Desktop
-cp /home/ning/lab_tracker/desktop/lab-tracker.desktop ~/Desktop/
+cp desktop/lab-tracker.desktop ~/Desktop/
 chmod +x ~/Desktop/lab-tracker.desktop
 ```
 
@@ -276,7 +278,7 @@ gio set ~/Desktop/lab-tracker.desktop metadata::trusted true
 
 ```bash
 mkdir -p ~/.local/share/applications
-cp /home/ning/lab_tracker/desktop/lab-tracker.desktop ~/.local/share/applications/
+cp desktop/lab-tracker.desktop ~/.local/share/applications/
 update-desktop-database ~/.local/share/applications/
 ```
 
@@ -321,11 +323,11 @@ update-desktop-database ~/.local/share/applications/
 运行：
 
 ```bash
-python3 /home/ning/lab_tracker/tests/make_fake_day.py
-python3 /home/ning/lab_tracker/summary.py --date 2099-01-01
-python3 /home/ning/lab_tracker/summary.py --date 2099-01-08
-python3 /home/ning/lab_tracker/summary.py --date 2099-01-09
-python3 /home/ning/lab_tracker/summary.py --date 2099-01-07 --week
+python3 tests/make_fake_day.py
+small-galaxy-report --date 2099-01-01
+small-galaxy-report --date 2099-01-08
+small-galaxy-report --date 2099-01-09
+small-galaxy-report --date 2099-01-07 --week
 ```
 
 **预期输出**（阈值取默认的 300 秒，我在开发时实际跑过，数字和下面完全一致）：

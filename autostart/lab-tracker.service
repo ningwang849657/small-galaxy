@@ -5,7 +5,10 @@ PartOf=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 %h/lab_tracker/lab_tracker.py
+# pip 装过就是这一行；从源码跑改成：
+#   ExecStart=/usr/bin/python3 -m smallgalaxy.lab_tracker
+#   WorkingDirectory=%h/small-galaxy
+ExecStart=%h/.local/bin/small-galaxy-daemon
 Restart=on-failure
 RestartSec=10
 StandardOutput=append:%h/.lab_tracker/lab_tracker.log

@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import probes
+from smallgalaxy import probes
 
 
 class X11Tests(unittest.TestCase):
@@ -165,11 +165,41 @@ class DetectionTests(unittest.TestCase):
     def test_x11_is_tried_before_wayland(self):
         # Under XWayland both can answer, and X11 is the better one: it still reads titles.
         keys = [factory.key for factory in probes.ALL_PROBES]
+        self.assertLess(keys.index('x11-ctypes'), keys.index('gnome-wayland'))
         self.assertLess(keys.index('x11'), keys.index('gnome-wayland'))
+
+    def test_dependency_free_x11_is_preferred_over_xprintidle(self):
+        # Whichever comes first decides whether a user has to apt install anything.
+        keys = [factory.key for factory in probes.ALL_PROBES]
+        self.assertLess(keys.index('x11-ctypes'), keys.index('x11'))
 
     def test_every_backend_declares_a_label(self):
         for factory in probes.ALL_PROBES:
             self.assertTrue(factory.key and factory.label, factory)
+
+
+class XlibTests(unittest.TestCase):
+    """The ctypes X11 backend is what removes the apt-install step, so it must be
+    the one that actually answers on this machine."""
+
+    def test_it_reads_idle_time_here(self):
+        probe = probes.X11CtypesProbe()
+        if not probe.available():
+            self.skipTest('no X11 display')
+        idle = probe.idle_seconds()
+        self.assertIsInstance(idle, float)
+        self.assertGreaterEqual(idle, 0)
+
+    def test_it_is_the_backend_that_gets_picked(self):
+        if not probes.X11CtypesProbe().available():
+            self.skipTest('no X11 display')
+        self.assertEqual(probes.detect_probe().key, 'x11-ctypes')
+
+    def test_no_display_is_handled(self):
+        with patch.object(probes.ctypes, 'CDLL', side_effect=OSError('no library')):
+            probe = probes.X11CtypesProbe()
+            self.assertIsNone(probe.idle_seconds())
+            self.assertEqual(probe.window_title(), '')
 
 
 class PortabilityTests(unittest.TestCase):
@@ -182,7 +212,7 @@ class PortabilityTests(unittest.TestCase):
 
     def test_no_platform_specific_module_is_imported_at_top_level(self):
         import ast
-        root = Path(__file__).resolve().parents[1]
+        root = Path(__file__).resolve().parents[1] / 'smallgalaxy'
         risky = self.UNIX_ONLY | self.WINDOWS_ONLY
         for path in sorted(root.glob('*.py')):
             tree = ast.parse(path.read_text(encoding='utf-8'))

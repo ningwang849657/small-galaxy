@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import dashboard
+from smallgalaxy import dashboard
 
 
 class DashboardTests(unittest.TestCase):
@@ -73,7 +73,7 @@ class DaemonStatusTests(unittest.TestCase):
 class ThemeContrastTests(unittest.TestCase):
     """Every page theme must stay readable; a new palette cannot quietly drop below WCAG AA."""
 
-    CSS = (Path(__file__).resolve().parents[1] / 'dashboard.css').read_text(encoding='utf-8')
+    CSS = (Path(dashboard.__file__).parent / 'assets' / 'dashboard.css').read_text(encoding='utf-8')
     LIGHT = ('light', 'warm', 'linen', 'mist', 'sky', 'dusk', 'blush')
     DARK = ('dark', 'ink', 'midnight', 'night', 'cocoa', 'wine')
 
@@ -122,7 +122,7 @@ class ThemeContrastTests(unittest.TestCase):
         declared = set(re.findall(r':root\[data-theme="([a-z]+)"\]', self.CSS))
         listed = set(self.LIGHT + self.DARK)
         self.assertEqual(declared | {'light'}, listed, 'CSS themes and the tested list drifted apart')
-        script = (Path(__file__).resolve().parents[1] / 'dashboard-personalization.js').read_text(encoding='utf-8')
+        script = (Path(dashboard.__file__).parent / 'assets' / 'dashboard-personalization.js').read_text(encoding='utf-8')
         for theme in listed:
             self.assertIn(f"['{theme}'", script, f'{theme} is not offered in the settings menu')
 

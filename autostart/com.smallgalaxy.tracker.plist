@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- macOS 开机自启。把 __PROJECT_DIR__ 换成本项目的绝对路径，然后：
+<!-- macOS 开机自启。
+     先装：pip3 install small-galaxy
+     然后用 `which small-galaxy-daemon` 查出绝对路径，替换下面的 __DAEMON_PATH__
+     （通常是 /Users/你的名字/Library/Python/3.x/bin/small-galaxy-daemon）。
+
        cp autostart/com.smallgalaxy.tracker.plist ~/Library/LaunchAgents/
        launchctl load ~/Library/LaunchAgents/com.smallgalaxy.tracker.plist
-     停止：launchctl unload ~/Library/LaunchAgents/com.smallgalaxy.tracker.plist -->
+
+     停止：launchctl unload ~/Library/LaunchAgents/com.smallgalaxy.tracker.plist
+
+     首次运行如果想让「娱乐时间」也被识别，需要在
+     系统设置 → 隐私与安全性 → 辅助功能 里授权，否则只拿得到程序名。 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -10,8 +18,7 @@
   <string>com.smallgalaxy.tracker</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/usr/bin/python3</string>
-    <string>__PROJECT_DIR__/lab_tracker.py</string>
+    <string>__DAEMON_PATH__</string>
   </array>
   <key>RunAtLoad</key>
   <true/>

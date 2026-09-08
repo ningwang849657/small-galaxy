@@ -1,3 +1,9 @@
+# Build artefacts
+build/
+dist/
+*.egg-info/
+*.AppImage
+
 # Python caches and local environments
 __pycache__/
 *.py[cod]

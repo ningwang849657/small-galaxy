@@ -1,8 +1,11 @@
 [Desktop Entry]
 Type=Application
 Name=小银河
+Name[en]=Small Galaxy
 Comment=查看最近 14 天的科研时间仪表盘
-Exec=/usr/bin/python3 /home/ning/lab_tracker/dashboard.py
-Icon=/home/ning/lab_tracker/icons/galaxy.svg
+# 用 pip 装过之后 small-galaxy 就在 PATH 里；从源码跑就换成
+# Exec=/usr/bin/python3 -m smallgalaxy.dashboard  并设 Path= 指向项目目录
+Exec=small-galaxy
+Icon=small-galaxy
 Terminal=false
 Categories=Utility;

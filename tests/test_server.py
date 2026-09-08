@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-import dashboard_server
+from smallgalaxy import dashboard_server
 
 
 class ServerTests(unittest.TestCase):

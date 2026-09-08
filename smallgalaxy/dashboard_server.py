@@ -100,6 +100,17 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+def _server_command():
+    """怎么把自己作为后台服务再启动一次。
+
+    源码和 pip 安装都能用 `python -m smallgalaxy.dashboard_server`；
+    PyInstaller 打出来的包里没有 Python 解释器可调，改成用自身可执行文件加一个开关。
+    """
+    if getattr(sys, "frozen", False):
+        return [sys.executable, "--serve"]
+    return [sys.executable, "-m", "smallgalaxy.dashboard_server"]
+
+
 def ensure_server():
     opener = build_opener(ProxyHandler({}))
 
@@ -112,7 +123,7 @@ def ensure_server():
 
     if ready():
         return URL
-    process = subprocess.Popen([sys.executable, str(Path(__file__).resolve())],
+    process = subprocess.Popen(_server_command(),
                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                                stderr=subprocess.DEVNULL, start_new_session=True)
     for _ in range(30):

@@ -10,8 +10,8 @@ import tempfile
 import webbrowser
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from summary import DEFAULT_THRESHOLD_SECONDS, build_day_segments, load_records
+from . import asset_dir
+from .summary import DEFAULT_THRESHOLD_SECONDS, build_day_segments, load_records
 
 DATA_DIR = Path.home() / ".lab_tracker"
 DASHBOARD_PATH = DATA_DIR / "dashboard.html"
@@ -19,7 +19,7 @@ WINDOW_DAYS = 14
 STALE_AFTER_SECONDS = 180
 # 头像内嵌为 data URI，页面打开时不会向 github.com 发请求；换头像后重新下载这个文件即可。
 GITHUB_USER = "ningwang849657"
-AVATAR_PATH = Path(__file__).resolve().parent / "icons" / "github-avatar.jpg"
+AVATAR_PATH = asset_dir() / "icons" / "github-avatar.jpg"
 
 
 def check_daemon_status() -> str:
@@ -121,7 +121,7 @@ def avatar_data_uri() -> str:
 
 
 def render_html(data: dict) -> str:
-    assets = Path(__file__).resolve().parent
+    assets = asset_dir()
     html = _TEMPLATE.replace("__DASHBOARD_DATA__", json.dumps(data, ensure_ascii=False).replace("<", "\\u003c"))
     html = html.replace('<meta http-equiv="refresh" content="60">', '')
     html = html.replace("摸鱼 / 中断", "空闲 / 中断").replace("中断 / 摸鱼", "空闲 / 中断")
@@ -925,7 +925,7 @@ def _open_in_browser(path: Path) -> None:
     """优先用浏览器自己的 --new-window 打开一个新窗口（一般会被窗口管理器带到前台）；
     如果 webbrowser 走 xdg-open 复用了已有窗口的某个后台标签页，双击图标会显得"没反应"。
     """
-    from dashboard_server import ensure_server
+    from .dashboard_server import ensure_server
     url = ensure_server()
     for browser_cmd in (["google-chrome", "--new-window", url], ["firefox", "--new-window", url]):
         if shutil.which(browser_cmd[0]):
