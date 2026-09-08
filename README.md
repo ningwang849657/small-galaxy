@@ -76,19 +76,22 @@ python3 -m smallgalaxy.probes    # 打印选中的后端、当前空闲秒数和
 
 ```bash
 chmod +x SmallGalaxy-x86_64.AppImage
-./SmallGalaxy-x86_64.AppImage              # 打开仪表盘
-./SmallGalaxy-x86_64.AppImage --daemon     # 后台开始记录
+./SmallGalaxy-x86_64.AppImage      # 打开仪表盘，并自动开始后台记录
 ```
 
 不需要装 Python 包，也不需要 `apt install` 任何东西（只用到系统自带的 python3 和 X11 库）。
+
+**第一次打开会是空的** —— 数据要靠后台采样收集，每 60 秒一次。所以打开仪表盘时会顺手把采样进程拉起来（已经在跑就不会重复启动），页面上也会说明当前状态。约一分钟后出现第一根柱子，页面每分钟自己刷新。
+
+不想让它自动启动就设 `SMALL_GALAXY_NO_DAEMON=1`，再手动跑 `./SmallGalaxy-x86_64.AppImage --daemon`。
 
 **任意平台 —— pip**
 
 ```bash
 pip install small-galaxy
 
-small-galaxy            # 打开仪表盘
-small-galaxy-daemon     # 前台跑采样，确认有数据进来后再配开机自启
+small-galaxy            # 打开仪表盘（顺带自动开始后台记录）
+small-galaxy-daemon     # 只跑采样，前台，看得到日志
 small-galaxy-report     # 命令行日报/周报
 ```
 

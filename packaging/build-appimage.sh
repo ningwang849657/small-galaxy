@@ -24,11 +24,7 @@ cat > "$APPDIR/AppRun" <<'LAUNCHER'
 #!/usr/bin/env bash
 HERE="$(dirname "$(readlink -f "$0")")"
 export PYTHONPATH="$HERE/usr/lib:${PYTHONPATH:-}"
-# 没有参数就打开仪表盘；传 --daemon 则跑后台采样。
-if [ "${1:-}" = "--daemon" ]; then
-  shift
-  exec python3 -m smallgalaxy.lab_tracker "$@"
-fi
+# 一个入口全包：无参数开仪表盘，--daemon 跑采样，--serve 只起本机服务。
 exec python3 -m smallgalaxy.dashboard "$@"
 LAUNCHER
 chmod +x "$APPDIR/AppRun"

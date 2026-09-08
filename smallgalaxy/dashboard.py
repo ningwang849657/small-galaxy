@@ -3,6 +3,7 @@
 import base64
 import datetime
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -39,6 +40,60 @@ def check_daemon_status() -> str:
     behind = (datetime.datetime.now() - newest).total_seconds()
     # 采样间隔 60 秒，留三倍余量：偶尔一次卡顿不该显示成"未在记录"。
     return "active" if behind <= STALE_AFTER_SECONDS else "inactive"
+
+
+def daemon_command():
+    """怎么把采样守护进程作为独立后台进程启动。
+
+    AppImage 要特别处理：AppRun 是把系统 python3 加上 PYTHONPATH 跑起来的，
+    而 AppImage 的挂载点在它自己的进程退出时就会被卸载。所以不能从这里直接
+    起一个 python 子进程——父进程一退出，挂载没了，守护进程就读不到资源文件。
+    必须重新起一个独立的 AppImage 进程，让它自己持有挂载。
+    """
+    appimage = os.environ.get("APPIMAGE")
+    if appimage:
+        return [appimage, "--daemon"]
+    if getattr(sys, "frozen", False):
+        return [sys.executable, "--daemon"]
+    return [sys.executable, "-m", "smallgalaxy.lab_tracker"]
+
+
+def daemon_hint() -> str:
+    """页面上要显示给用户的那条"手动启动"命令，按安装方式给对的写法。"""
+    appimage = os.environ.get("APPIMAGE")
+    if appimage:
+        return f"./{Path(appimage).name} --daemon"
+    if shutil.which("small-galaxy-daemon"):
+        return "small-galaxy-daemon"
+    return "python3 -m smallgalaxy.lab_tracker"
+
+
+def ensure_daemon() -> bool:
+    """打开仪表盘时顺手把后台采样拉起来，返回是否真的起了一个新进程。
+
+    不需要先判断有没有在跑：守护进程自带单实例文件锁，重复启动的那个会立刻退出。
+    设 SMALL_GALAXY_NO_DAEMON=1 可以关掉这个行为。
+    """
+    if os.environ.get("SMALL_GALAXY_NO_DAEMON"):
+        return False
+    if check_daemon_status() == "active":
+        return False
+    quiet = {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
+    # 脱离当前终端/浏览器进程，否则关掉它们会顺手杀死采样进程。
+    if os.name == "nt":
+        quiet["creationflags"] = 0x00000008 | 0x08000000  # DETACHED_PROCESS | CREATE_NO_WINDOW
+    else:
+        quiet["start_new_session"] = True
+    # 子进程是全新的解释器，不会继承 sys.path。从源码目录直接跑时它找不到
+    # smallgalaxy 包，会立刻 ModuleNotFoundError 退出——把包的位置显式传下去。
+    env = os.environ.copy()
+    package_root = str(Path(__file__).resolve().parents[1])
+    env["PYTHONPATH"] = os.pathsep.join(filter(None, [package_root, env.get("PYTHONPATH")]))
+    try:
+        subprocess.Popen(daemon_command(), env=env, **quiet)
+        return True
+    except OSError:
+        return False
 
 
 def _seconds_since_midnight(dt: datetime.datetime) -> float:
@@ -98,7 +153,8 @@ def build_day_payload(date: datetime.date, threshold: float) -> dict:
     return payload
 
 
-def build_dashboard_data(threshold: float = DEFAULT_THRESHOLD_SECONDS, window_days: int = WINDOW_DAYS) -> dict:
+def build_dashboard_data(threshold: float = DEFAULT_THRESHOLD_SECONDS, window_days: int = WINDOW_DAYS,
+                         daemon_started: bool = False) -> dict:
     today = datetime.date.today()
     days = [
         build_day_payload(today - datetime.timedelta(days=offset), threshold)
@@ -108,6 +164,9 @@ def build_dashboard_data(threshold: float = DEFAULT_THRESHOLD_SECONDS, window_da
         "generated_at": datetime.datetime.now().isoformat(timespec="seconds"),
         "threshold_seconds": threshold,
         "daemon_status": check_daemon_status(),
+        # 首次打开时页面要能说清楚"现在该做什么"，这两项就是给它的。
+        "daemon_started": daemon_started,
+        "start_hint": daemon_hint(),
         "days": days,
     }
 
@@ -134,8 +193,9 @@ def render_html(data: dict) -> str:
     return html.replace("</body>", scripts + "</body>")
 
 
-def regenerate_dashboard_html(threshold: float = DEFAULT_THRESHOLD_SECONDS) -> Path:
-    data = build_dashboard_data(threshold)
+def regenerate_dashboard_html(threshold: float = DEFAULT_THRESHOLD_SECONDS,
+                              daemon_started: bool = False) -> Path:
+    data = build_dashboard_data(threshold, daemon_started=daemon_started)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     # Readers always see a complete generation, even during the five-minute update.
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=DATA_DIR,
@@ -938,9 +998,19 @@ def _open_in_browser(path: Path) -> None:
 
 
 def main():
-    path = regenerate_dashboard_html()
+    if "--serve" in sys.argv:                      # 冻结打包后进程自己起服务用的开关
+        from .dashboard_server import serve_forever
+        serve_forever()
+        return
+    if "--daemon" in sys.argv:                     # AppImage 双击时的后台模式
+        from .lab_tracker import main as run_daemon
+        run_daemon()
+        return
+    # 双击图标就该开始工作：没在记录就顺手把采样拉起来，页面再告诉用户发生了什么。
+    started = ensure_daemon()
+    path = regenerate_dashboard_html(daemon_started=started)
     _open_in_browser(path)
-    _notify("小银河", "仪表盘已在浏览器中打开")
+    _notify("小银河", "已开始记录，仪表盘已在浏览器中打开" if started else "仪表盘已在浏览器中打开")
 
 
 if __name__ == "__main__":

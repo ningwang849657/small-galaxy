@@ -62,6 +62,13 @@ button:disabled { opacity:.35; cursor:default; }
 table { white-space:nowrap; }
 footer { font-size:10px; line-height:1.8; }
 .method-note { font-size:11px; color:var(--ink-3); line-height:1.9; margin:20px 4px; }
+/* 首次打开的引导卡：只在一条记录都没有时出现。 */
+.first-run { border-left:3px solid var(--active); }
+.first-run h2 { font-size:22px; margin:0 0 10px; letter-spacing:-.04em; }
+.first-run .muted { max-width:640px; }
+.start-command { display:inline-block; margin:16px 0 6px; padding:11px 16px; border-radius:12px;
+  background:var(--accent-soft); color:var(--active); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:13px; user-select:all; }
 .tooltip { color:#fff; }
 .tooltip .tt-head,.tooltip .tt-lbl { color:#c2c5d0; }
 @media (min-width:900px) { .hero::after { content:'✦'; position:absolute; right:38px; top:34px; font-size:150px; color:#c8d9f3; transform:rotate(12deg); opacity:.65; } }

@@ -135,5 +135,9 @@ def ensure_server():
     raise RuntimeError(f'小银河本地页面服务无法启动，请检查端口 {PORT} 是否已被占用。')
 
 
-if __name__ == '__main__':
+def serve_forever():
     ThreadingHTTPServer(('127.0.0.1', PORT), Handler).serve_forever()
+
+
+if __name__ == '__main__':
+    serve_forever()

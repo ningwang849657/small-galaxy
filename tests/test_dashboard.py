@@ -4,6 +4,7 @@ import re
 import sys
 import unittest
 from pathlib import Path
+import unittest.mock
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -68,6 +69,56 @@ class DaemonStatusTests(unittest.TestCase):
         with patch.object(dashboard, 'load_records', self._records(10)), \
              patch.object(dashboard.subprocess, 'run', side_effect=AssertionError('must not run a command')):
             self.assertEqual(dashboard.check_daemon_status(), 'active')
+
+
+class DaemonBootstrapTests(unittest.TestCase):
+    """Opening the dashboard should start recording, so a first run is not an empty page."""
+
+    def test_appimage_relaunches_itself_rather_than_python(self):
+        # An AppImage unmounts when its process exits, taking the package with it,
+        # so the daemon has to be a fresh AppImage process holding its own mount.
+        with patch.dict(dashboard.os.environ, {'APPIMAGE': '/tmp/SmallGalaxy.AppImage'}):
+            self.assertEqual(dashboard.daemon_command(), ['/tmp/SmallGalaxy.AppImage', '--daemon'])
+            self.assertEqual(dashboard.daemon_hint(), './SmallGalaxy.AppImage --daemon')
+
+    def test_source_checkout_runs_the_module(self):
+        with patch.dict(dashboard.os.environ, {}, clear=False):
+            dashboard.os.environ.pop('APPIMAGE', None)
+            self.assertEqual(dashboard.daemon_command()[1:], ['-m', 'smallgalaxy.lab_tracker'])
+
+    def test_child_is_told_where_the_package_lives(self):
+        # A fresh interpreter does not inherit sys.path; without this the daemon dies
+        # with ModuleNotFoundError the moment it starts from a source checkout.
+        seen = {}
+
+        def fake_popen(command, env=None, **kwargs):
+            seen['env'] = env
+            seen['kwargs'] = kwargs
+            return unittest.mock.Mock()
+
+        with patch.object(dashboard, 'check_daemon_status', return_value='unknown'), \
+             patch.object(dashboard.subprocess, 'Popen', fake_popen):
+            self.assertTrue(dashboard.ensure_daemon())
+        package_root = str(Path(dashboard.__file__).resolve().parents[1])
+        self.assertIn(package_root, seen['env']['PYTHONPATH'].split(dashboard.os.pathsep))
+        self.assertTrue(seen['kwargs'].get('start_new_session') or seen['kwargs'].get('creationflags'))
+
+    def test_it_does_not_start_a_second_one_while_recording(self):
+        with patch.object(dashboard, 'check_daemon_status', return_value='active'), \
+             patch.object(dashboard.subprocess, 'Popen', side_effect=AssertionError('must not spawn')):
+            self.assertFalse(dashboard.ensure_daemon())
+
+    def test_the_behaviour_can_be_switched_off(self):
+        with patch.dict(dashboard.os.environ, {'SMALL_GALAXY_NO_DAEMON': '1'}), \
+             patch.object(dashboard.subprocess, 'Popen', side_effect=AssertionError('must not spawn')):
+            self.assertFalse(dashboard.ensure_daemon())
+
+    def test_payload_carries_what_the_empty_state_needs(self):
+        with patch.object(dashboard, 'load_records', lambda date: []):
+            data = dashboard.build_dashboard_data(daemon_started=True)
+        self.assertTrue(data['daemon_started'])
+        self.assertTrue(data['start_hint'])
+        self.assertFalse(any(day['has_data'] for day in data['days']))
 
 
 class ThemeContrastTests(unittest.TestCase):

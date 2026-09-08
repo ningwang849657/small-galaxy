@@ -87,6 +87,42 @@ hours.forEach((seconds,h) => {
 });
 }
 renderRhythm();
+/* 第一次打开时页面是全空的：14 根柱子、三个卡片全是 0。不解释一句的话，
+   用户看不出是"还没开始记录"还是"坏了"。这块只在完全没有数据时出现。 */
+document.querySelector('.kpi-row').insertAdjacentHTML('beforebegin',
+  '<section class="card first-run" id="first-run" hidden></section>');
+window.renderEmptyState = function () {
+  const card = document.getElementById('first-run');
+  const auto = !LABELS.manual;
+  const empty = !DATA.days.some(day => day.has_data);
+  card.hidden = !(auto && empty);
+  if (card.hidden) return;
+  card.replaceChildren();
+  const running = DATA.daemon_started || DATA.daemon_status === 'active';
+  const heading = document.createElement('h2');
+  heading.textContent = running ? '已经开始记录了。' : '还没有开始记录。';
+  const lead = document.createElement('p');
+  lead.className = 'muted';
+  lead.textContent = running
+    ? '后台采样正在运行。每 60 秒采一次，第一根柱子大约一分钟后出现，这个页面每分钟自己刷新，放着不用管。'
+    : '这个页面只负责展示，数据要靠后台的采样进程收集。在终端里跑下面这行，然后回到这个页面：';
+  card.append(document.createElement('div'), heading, lead);
+  card.firstChild.className = 'eyebrow';
+  card.firstChild.textContent = running ? 'COLLECTING' : 'ONE MORE STEP';
+  if (!running) {
+    const command = document.createElement('code');
+    command.className = 'start-command';
+    command.textContent = DATA.start_hint || 'small-galaxy-daemon';
+    card.appendChild(command);
+  }
+  const note = document.createElement('p');
+  note.className = 'muted';
+  note.textContent = running
+    ? '想让它开机自动启动，看项目里的 autostart/ 目录。'
+    : '想让它开机自动启动，看项目里的 autostart/ 目录。已经在跑的话，重复启动会被单实例锁挡下，不会重复记录。';
+  card.appendChild(note);
+};
+
 const detailCard = document.getElementById('detail-title').closest('.card');
 detailCard.querySelector('.hint').remove();
 detailCard.querySelector('.card-head').insertAdjacentHTML('beforeend','<div class="detail-actions"><button id="prev-day" aria-label="前一天">←</button><button id="today-button">今天</button><button id="next-day" aria-label="后一天">→</button></div>');

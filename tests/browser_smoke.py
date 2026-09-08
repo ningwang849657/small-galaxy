@@ -36,6 +36,21 @@ try {
  // Decorative artwork is drawn locally and must never pull an external asset.
  check(document.querySelectorAll('#forest-band .kodama').length===7,'forest spirits drawn');
  check(document.querySelectorAll('.rain-layer span').length===110,'rain drops drawn');
+ // First-run guidance appears only when nothing has ever been recorded.
+ check(document.getElementById('first-run').hidden,'no first-run card once data exists');
+ const realDays=DATA.days, realStatus=DATA.daemon_status;
+ // Status is derived from log freshness, so an empty log always means "not active".
+ DATA.days=realDays.map(day=>({...day,has_data:false}));
+ DATA.daemon_status='unknown';
+ renderEmptyState();
+ check(!document.getElementById('first-run').hidden,'first-run card appears on an empty log');
+ check(document.querySelector('.start-command').textContent===DATA.start_hint,'it prints the command for this install');
+ check(document.getElementById('first-run').innerText.includes('还没有开始记录'),'it says recording has not started');
+ DATA.daemon_started=true; renderEmptyState();
+ check(!document.querySelector('.start-command'),'no command once the daemon was just started');
+ check(document.getElementById('first-run').innerText.includes('已经开始记录'),'it confirms recording began');
+ DATA.daemon_started=false; DATA.days=realDays; DATA.daemon_status=realStatus; renderEmptyState();
+ check(document.getElementById('first-run').hidden,'card hides again once data is back');
  // Weather runs as a phase: drizzle builds to a downpour, eases off, then the sun comes out.
  const weatherOf=p=>{const w=weatherAt(p);return [Number(w.rain.toFixed(3)),Number(w.sun.toFixed(3))];};
  check(weatherOf(0)[0]>0 && weatherOf(0)[0]<.4 && weatherOf(0)[1]===0,'cycle starts on light rain');

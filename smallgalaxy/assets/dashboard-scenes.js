@@ -280,6 +280,7 @@ window.applySceneSettings=function() {
   document.getElementById('session-date').min=DATA.days[0].date;document.getElementById('session-date').max=TODAY.date;
   if(!document.getElementById('session-date').value) resetSessionForm();
   renderStatus();renderSceneLabels();renderKPIs();renderGoal();renderRhythm();renderTable();
+  window.renderEmptyState?.();
   selectDay(DATA.days.some(day=>day.date===oldDate)?oldDate:TODAY.date);
   document.getElementById('peak-description').textContent+=currentScene().source==='manual'?' 按手动记录统计。':'';
 };
