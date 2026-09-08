@@ -1,0 +1,23 @@
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Personal activity data and generated dashboards
+.lab_tracker/
+logs/
+dashboard.html
+*.csv
+*.lock
+*.log
+*.pid
+
+# Local credentials and editor settings
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+.DS_Store

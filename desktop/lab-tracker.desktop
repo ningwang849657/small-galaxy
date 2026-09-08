@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=小银河
+Comment=查看最近 14 天的科研时间仪表盘
+Exec=/usr/bin/python3 /home/ning/lab_tracker/dashboard.py
+Icon=/home/ning/lab_tracker/icons/galaxy.svg
+Terminal=false
+Categories=Utility;

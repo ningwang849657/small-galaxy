@@ -1,0 +1,15 @@
+[Unit]
+Description=Lab Tracker - 实验室科研时间记录守护进程
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/lab_tracker/lab_tracker.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:%h/.lab_tracker/lab_tracker.log
+StandardError=append:%h/.lab_tracker/lab_tracker.log
+
+[Install]
+WantedBy=graphical-session.target
