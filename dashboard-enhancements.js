@@ -1,23 +1,28 @@
-/* No network requests. Preferences stay in this browser. */
+/* Activity stays local; optional music is handled by dashboard-personalization.js. */
 const storage = {
   get(key, fallback) { try { return localStorage.getItem('galaxy.' + key) ?? fallback; } catch { return fallback; } },
-  set(key, value) { try { localStorage.setItem('galaxy.' + key, value); } catch {} }
+  set(key, value) { try { localStorage.setItem('galaxy.' + key, value); return true; } catch { return false; } }
 };
 const header = document.querySelector('header');
-header.insertAdjacentHTML('afterend', `<section class="hero"><div class="eyebrow">SMALL GALAXY · YOUR RESEARCH, IN TIME</div><h2>每一点专注，<br><span>都有自己的光。</span></h2><p>不必让每一天都满格。看见投入的时间，也给思考和休息留一点空间。</p><p class="hero-meta" id="hero-date"></p></section>`);
+// 头像在生成时就内嵌成 data URI；文件缺失时 AVATAR_SRC 为空串，这里直接省略这块署名。
+const authorChip = AVATAR_SRC ? `<a class="author-chip" href="https://github.com/${GITHUB_USER}" target="_blank" rel="noopener noreferrer"><img src="${AVATAR_SRC}" alt="${GITHUB_USER} 的 GitHub 头像" width="34" height="34" decoding="async"><span><strong>${GITHUB_USER}</strong><small>GITHUB</small></span></a>` : '';
+header.insertAdjacentHTML('afterend', `<section class="hero"><div class="eyebrow">SMALL GALAXY · YOUR RESEARCH, IN TIME</div><div class="headline-scroll"><h2 id="hero-title">每一点专注，都有自己的光。</h2></div><p id="hero-signature">不必让每一天都满格。看见投入的时间，也给思考和休息留一点空间。</p><div class="hero-foot">${authorChip}<p class="hero-meta" id="hero-date"></p></div></section>`);
 document.getElementById('hero-date').textContent = TODAY.date + ' · ' + TODAY.weekday + '  /  你的私人科研时间记录';
 document.querySelector('.tagline').textContent = '记录日常，看见积累';
 document.querySelector('.kpi-row').insertAdjacentHTML('afterend', `
 <section class="insight-grid" aria-label="个人节奏">
-  <div class="card focus-card"><div class="eyebrow">ONE DAY AT A TIME</div><h2>按自己的节奏。</h2>
+  <div class="card focus-card"><div class="eyebrow">ONE DAY AT A TIME</div><h2 id="goal-heading">按自己的节奏。</h2>
     <div class="focus-layout"><div class="ring" id="goal-ring"><div class="ring-inner"><strong id="goal-percent">—</strong><small>今日目标</small></div></div>
     <div><p id="goal-message" class="muted" aria-live="polite"></p><div class="goal-controls"><label for="daily-goal">每日目标</label><select id="daily-goal"><option value="2">2 小时</option><option value="3">3 小时</option><option value="4">4 小时</option><option value="5">5 小时</option><option value="6">6 小时</option><option value="8">8 小时</option></select></div><p class="muted">目标只是参考，不是考核。</p></div></div>
   </div>
-  <div class="card"><div class="eyebrow">FIND YOUR RHYTHM</div><h2 style="font-size:20px;margin:0">你的活跃时段</h2><div class="insight-number" id="peak-time">—</div><div class="muted" id="peak-description"></div><div class="hour-bars" id="hour-bars" role="img" aria-label="过去 14 天按小时累计的有效活动时长"></div><div class="hour-labels"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div></div>
+  <div class="card"><div class="eyebrow">FIND YOUR RHYTHM</div><h2 id="rhythm-heading" style="font-size:20px;margin:0">你的活跃时段</h2><div class="insight-number" id="peak-time">—</div><div class="muted" id="peak-description"></div><div class="hour-bars" id="hour-bars" role="img" aria-label="过去 14 天按小时累计的有效活动时长"></div><div class="hour-labels"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div></div>
 </section>`);
 const goalSelect = document.getElementById('daily-goal');
-const savedGoal = storage.get('goal', '4');
-goalSelect.value = ['2','3','4','5','6','8'].includes(savedGoal) ? savedGoal : '4';
+// Half-hour increments, including values outside the original preset list.
+goalSelect.textContent = '';
+for(let value=.5;value<=12;value+=.5) goalSelect.add(new Option(value+' 小时',String(value)));
+const savedGoal = Number(storage.get('goal', '4'));
+goalSelect.value = savedGoal>=.5 && savedGoal<=12 && savedGoal*2===Math.floor(savedGoal*2) ? String(savedGoal) : '4';
 function renderGoal() {
   const target = Number(goalSelect.value) * 3600;
   const done = TODAY.active_seconds;
@@ -26,8 +31,45 @@ function renderGoal() {
   document.getElementById('goal-percent').textContent = TODAY.has_data ? percent + '%' : '—';
   document.getElementById('goal-message').textContent = !TODAY.has_data ? '还没有今天的记录，慢慢开始。' : done >= target ? '今日目标已完成。也记得适时休息。' : '已积累 ' + fmtDur(done) + '，距目标还有 ' + fmtDur(target-done) + '。';
 }
-goalSelect.addEventListener('change', () => { storage.set('goal', goalSelect.value); renderGoal(); });
+/* 三张时间卡里的"水位"：下深上浅，水面有波动，高度按真实数值相对每日目标涨落。
+   高度用 CSS transition 过渡，所以是从当前水位逐渐升到真实值，不会先冲高再回落。 */
+const CREST_PERIOD = 120, CREST_SPAN = 4;
+function crestPath(amplitude) {
+  let d = 'M0,10';
+  for (let i = 0; i < CREST_SPAN * 2; i++) {
+    const from = i * CREST_PERIOD / 2, to = from + CREST_PERIOD / 2;
+    const peak = 10 + (i % 2 ? amplitude : -amplitude);
+    d += ` C${from + CREST_PERIOD / 6},${peak} ${to - CREST_PERIOD / 6},${peak} ${to},10`;
+  }
+  return d + ` L${CREST_SPAN * CREST_PERIOD},20 L0,20 Z`;
+}
+document.querySelectorAll('.kpi-row .tile').forEach(tile => {
+  tile.insertAdjacentHTML('afterbegin',
+    `<div class="tile-wave" aria-hidden="true"><div class="wave-fill"><svg class="wave-crest" viewBox="0 0 240 20" preserveAspectRatio="none"><path class="crest-back" d="${crestPath(4.5)}"/><path class="crest-front" d="${crestPath(7)}"/></svg></div></div>`);
+});
+// 达标≈62% 水位，超额再慢慢往上加：水面始终留在卡片里，看得见波动，也看得出超额了多少。
+function waveLevel(ratio) {
+  const reached = Math.max(0, Math.min(1, ratio || 0));
+  const beyond = Math.max(0, Math.min(1, (ratio || 0) - 1));
+  return .62 * reached + .16 * beyond;
+}
+function renderTileWaves() {
+  const goal = Number(goalSelect.value) * 3600;
+  const valid = DATA.days.filter(isValid);
+  const average = valid.length ? valid.reduce((sum, day) => sum + day.active_seconds, 0) / valid.length : 0;
+  const week = DATA.days.slice(7).filter(isValid).reduce((sum, day) => sum + day.active_seconds, 0);
+  const ratios = [TODAY.active_seconds / goal, week / (goal * 7), average / goal];
+  document.querySelectorAll('.kpi-row .tile').forEach((tile, index) => {
+    tile.style.setProperty('--level', waveLevel(ratios[index]).toFixed(4));
+  });
+}
+goalSelect.addEventListener('change', () => { storage.set('goal', goalSelect.value); renderGoal(); renderTileWaves(); });
 renderGoal();
+const plainKPIs = renderKPIs;
+renderKPIs = function () { plainKPIs(); renderTileWaves(); };
+renderTileWaves();
+function renderRhythm() {
+document.getElementById('hour-bars').textContent='';
 const hours = Array(24).fill(0);
 DATA.days.forEach(day => day.segments.filter(s => s.kind === 'active').forEach(seg => {
   hours.forEach((_,h) => { hours[h] += Math.max(0, Math.min(seg.end_sec,(h+1)*3600)-Math.max(seg.start_sec,h*3600)); });
@@ -43,6 +85,8 @@ hours.forEach((seconds,h) => {
   bar.title = fmtClock(h*3600) + '–' + fmtClock((h+1)*3600) + ' · ' + fmtDur(seconds);
   document.getElementById('hour-bars').appendChild(bar);
 });
+}
+renderRhythm();
 const detailCard = document.getElementById('detail-title').closest('.card');
 detailCard.querySelector('.hint').remove();
 detailCard.querySelector('.card-head').insertAdjacentHTML('beforeend','<div class="detail-actions"><button id="prev-day" aria-label="前一天">←</button><button id="today-button">今天</button><button id="next-day" aria-label="后一天">→</button></div>');
@@ -80,16 +124,11 @@ document.getElementById('export-csv').onclick = () => {
   const url = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
   const a = document.createElement('a'); a.href=url; a.download='小银河-'+TODAY.date+'.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
-dataCard.insertAdjacentHTML('afterend','<p class="method-note">关于这些数字：根据键盘、鼠标空闲时间与窗口标题估算电脑活动，不能等同实际科研产出。阅读、讨论和离线思考可能计入空闲；无记录日不参与日均。所有记录保存在本机，导出文件不包含窗口标题。</p>');
+dataCard.insertAdjacentHTML('afterend','<p class="method-note">关于这些数字：来自键盘、鼠标空闲时间与窗口标题的采样，不能等同实际科研产出。阅读、讨论和离线思考可能计入空闲；无记录日不参与日均。所有记录保存在本机，导出文件不包含窗口标题。</p>');
 // Keep reading position and open table when the locally generated page refreshes.
 const savedScroll = Number(storage.get('scroll','0'));
 const details = dataCard.querySelector('details');
 details.open = storage.get('table','false') === 'true';
 if (Number.isFinite(savedScroll)) window.scrollTo(0,savedScroll);
 details.addEventListener('toggle',()=>storage.set('table',String(details.open)));
-let lastInteraction = Date.now();
-['pointerdown','keydown','scroll'].forEach(type=>window.addEventListener(type,()=>{lastInteraction=Date.now();},{passive:true}));
-setInterval(()=>{
-  if(document.hidden || Date.now()-lastInteraction<15000 || ['SELECT','INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
-  storage.set('scroll',String(window.scrollY)); location.reload();
-},60000);
+// The personalization module updates statistics without reloading the music player.

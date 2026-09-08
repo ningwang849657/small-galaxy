@@ -1,18 +1,12 @@
 #!/usr/bin/env python3
-"""小银河仪表盘：把最近 14 天的数据渲染成一份自包含的 HTML，在默认浏览器里打开。
-
-视觉设计说明（暖色晨光主题，单主题是刻意选择——记录的是"每天到实验室的时间"，
-晨光正合适；品牌标保留了深色星系小方块，呼应应用图标）：
-- 图表用"强调型"配色：有效时间 #3B72D9（在暖色表面上通过了 dataviz 校验器的
-  亮度带/色度/CVD/对比度四项检查），中断/摸鱼用刻意退后的沙色 #CFC3AC，两者
-  CVD 色差 ΔE≈74，远超 12 的安全线；低对比的 idle 色靠数据表格和悬停提示兜底。
-- 琥珀色 #A96A1C 只用于参考线、"今天"标记和选中态，不参与数据系列。
-"""
+"""生成自包含仪表盘，通过本机页面服务打开，支持个性化与可选音乐。"""
+import base64
 import datetime
 import json
 import shutil
 import subprocess
 import sys
+import tempfile
 import webbrowser
 from pathlib import Path
 
@@ -23,6 +17,9 @@ DATA_DIR = Path.home() / ".lab_tracker"
 DASHBOARD_PATH = DATA_DIR / "dashboard.html"
 WINDOW_DAYS = 14
 SERVICE_NAME = "lab-tracker.service"
+# 头像内嵌为 data URI，页面打开时不会向 github.com 发请求；换头像后重新下载这个文件即可。
+GITHUB_USER = "ningwang849657"
+AVATAR_PATH = Path(__file__).resolve().parent / "icons" / "github-avatar.jpg"
 
 
 def check_daemon_status() -> str:
@@ -110,19 +107,37 @@ def build_dashboard_data(threshold: float = DEFAULT_THRESHOLD_SECONDS, window_da
     }
 
 
+def avatar_data_uri() -> str:
+    """本地头像文件转 data URI；文件缺失时返回空串，页面会跳过头像不报错。"""
+    try:
+        return "data:image/jpeg;base64," + base64.b64encode(AVATAR_PATH.read_bytes()).decode("ascii")
+    except OSError:
+        return ""
+
+
 def render_html(data: dict) -> str:
     assets = Path(__file__).resolve().parent
     html = _TEMPLATE.replace("__DASHBOARD_DATA__", json.dumps(data, ensure_ascii=False).replace("<", "\\u003c"))
     html = html.replace('<meta http-equiv="refresh" content="60">', '')
     html = html.replace("摸鱼 / 中断", "空闲 / 中断").replace("中断 / 摸鱼", "空闲 / 中断")
+    # base64 与用户名都只含 JS 字符串安全字符，直接替换不会破坏字面量。
+    html = html.replace("__AVATAR_SRC__", avatar_data_uri()).replace("__GITHUB_USER__", GITHUB_USER)
     html = html.replace("</head>", "<style>" + (assets / "dashboard.css").read_text(encoding="utf-8") + "</style></head>")
-    return html.replace("</body>", "<script>" + (assets / "dashboard-enhancements.js").read_text(encoding="utf-8") + "</script></body>")
+    scripts = "".join("<script>" + (assets / name).read_text(encoding="utf-8") + "</script>"
+                      for name in ("dashboard-enhancements.js", "dashboard-decor.js",
+                                   "dashboard-personalization.js", "dashboard-scenes.js"))
+    return html.replace("</body>", scripts + "</body>")
 
 
 def regenerate_dashboard_html(threshold: float = DEFAULT_THRESHOLD_SECONDS) -> Path:
     data = build_dashboard_data(threshold)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    DASHBOARD_PATH.write_text(render_html(data), encoding="utf-8")
+    # Readers always see a complete generation, even during the five-minute update.
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=DATA_DIR,
+                                     prefix="dashboard-", suffix=".tmp", delete=False) as output:
+        output.write(render_html(data))
+        temporary = Path(output.name)
+    temporary.replace(DASHBOARD_PATH)
     return DASHBOARD_PATH
 
 
@@ -422,16 +437,19 @@ _TEMPLATE = r"""<!doctype html>
 
   <footer>
     <span id="meta-line"></span>
-    <span>✦ 小银河</span>
+    <span id="footer-note">✦ 小银河</span>
   </footer>
 </div>
 
 <div class="tooltip" id="tooltip"></div>
 
 <script>
-const DATA = __DASHBOARD_DATA__;
+let DATA = __DASHBOARD_DATA__;
+const AVATAR_SRC = "__AVATAR_SRC__";
+const GITHUB_USER = "__GITHUB_USER__";
 const NS = "http://www.w3.org/2000/svg";
-const TODAY = DATA.days[DATA.days.length - 1];
+let TODAY = DATA.days[DATA.days.length - 1];
+let LABELS = {active:'有效科研', idle:'空闲 / 中断', fun:'娱乐', arrival:'到达', departure:'离开', presence:'总在场', manual:false};
 const isValid = d => d.has_data && !d.no_real_activity;
 
 /* ---------- 工具 ---------- */
@@ -522,7 +540,7 @@ function hideTooltip() { tooltip.style.opacity = 0; }
 })();
 
 /* ---------- 状态徽章 & 页脚 ---------- */
-(function renderStatus() {
+function renderStatus() {
   const map = {
     active:   ["on",  "记录中"],
     inactive: ["off", "未在记录"],
@@ -536,7 +554,8 @@ function hideTooltip() { tooltip.style.opacity = 0; }
   const thresholdMin = Math.round(DATA.threshold_seconds / 60);
   document.getElementById("meta-line").textContent =
     "数据生成于 " + DATA.generated_at.replace("T", " ") + " · 空闲阈值 " + thresholdMin + " 分钟 · 打开图标或后台每 5 分钟自动更新";
-})();
+}
+renderStatus();
 
 /* ---------- KPI ---------- */
 function deltaNode(diffSec, contextLabel) {
@@ -552,7 +571,7 @@ function deltaNode(diffSec, contextLabel) {
   }
   return span;
 }
-(function renderKPIs() {
+function renderKPIs() {
   const days = DATA.days;
   const valid = days.filter(isValid);
   const avg14 = valid.length ? valid.reduce((s, d) => s + d.active_seconds, 0) / valid.length : null;
@@ -563,7 +582,7 @@ function deltaNode(diffSec, contextLabel) {
   subToday.textContent = "";
   if (isValid(TODAY)) {
     const t = document.createElement("span");
-    t.textContent = "到达 " + TODAY.arrival + " · 最近活动 " + TODAY.departure;
+    t.textContent = LABELS.arrival + " " + TODAY.arrival + " · " + (LABELS.manual ? LABELS.departure : '最近活动') + " " + TODAY.departure;
     subToday.appendChild(t);
     const others = valid.filter(d => d !== TODAY);
     if (others.length) {
@@ -606,7 +625,8 @@ function deltaNode(diffSec, contextLabel) {
     spark.appendChild(bar);
   });
   subAvg.appendChild(spark);
-})();
+}
+renderKPIs();
 
 /* ---------- 14 天柱状图 ---------- */
 let selectedDate = null;
@@ -622,10 +642,10 @@ function topRoundedPath(x, y, w, h, r) {
 function dayTooltipNodes(day) {
   const nodes = [ttHead(day.date + " " + day.weekday + (day === TODAY ? " · 今天" : ""))];
   if (isValid(day)) {
-    nodes.push(ttRow("a", fmtDur(day.active_seconds), "有效科研"));
-    if (day.fun_seconds > 60) nodes.push(ttRow("f", fmtDur(day.fun_seconds), "娱乐"));
-    if (day.idle_seconds > 60) nodes.push(ttRow("i", fmtDur(day.idle_seconds), "摸鱼 / 中断"));
-    nodes.push(ttRow(null, day.arrival + " – " + day.departure, day === TODAY ? "到达 – 最近活动" : "到达 – 离开"));
+    nodes.push(ttRow("a", fmtDur(day.active_seconds), LABELS.active));
+    if (day.fun_seconds > 60) nodes.push(ttRow("f", fmtDur(day.fun_seconds), LABELS.fun));
+    if (day.idle_seconds > 60) nodes.push(ttRow("i", fmtDur(day.idle_seconds), LABELS.idle));
+    nodes.push(ttRow(null, day.arrival + " – " + day.departure, LABELS.arrival + ' – ' + (day === TODAY && !LABELS.manual ? '最近活动' : LABELS.departure)));
   } else {
     nodes.push(ttRow(null, day.has_data ? "没有检测到真实操作" : "没有记录", ""));
   }
@@ -638,11 +658,12 @@ function renderBarChart() {
   const W = 960, H = 244, mL = 42, mR = 72, mT = 14, mB = 46;
   const plotW = W - mL - mR, plotH = H - mT - mB, baseY = mT + plotH;
 
-  const maxSec = Math.max(8 * 3600, ...days.map(d => d.total_presence_seconds));
-  const maxH = Math.ceil(maxSec / 7200) * 2;
+  const maxSec = Math.max((LABELS.manual ? 1 : 8) * 3600, ...days.map(d => d.total_presence_seconds));
+  const maxH = LABELS.manual ? Math.ceil(maxSec / 3600) : Math.ceil(maxSec / 7200) * 2;
+  const tickStep = LABELS.manual && maxH <= 3 ? .5 : LABELS.manual && maxH <= 8 ? 1 : 2;
   const yOf = sec => baseY - (sec / (maxH * 3600)) * plotH;
 
-  for (let h = 0; h <= maxH; h += 2) {
+  for (let h = 0; h <= maxH; h += tickStep) {
     const y = yOf(h * 3600);
     if (h > 0) svg.appendChild(el("line", { x1: mL, x2: W - mR, y1: y, y2: y, class: "gridline" }));
     const lb = el("text", { x: mL - 9, y: y + 3.5, class: "axis-label", "text-anchor": "end" });
@@ -667,7 +688,7 @@ function renderBarChart() {
 
   days.forEach(day => {
     const cx = mL + band * (days.indexOf(day) + 0.5);
-    const g = el("g", { class: "bar-group", tabindex: 0, role: "button" });
+    const g = el("g", { class: "bar-group", tabindex: 0, role: "button", 'data-date':day.date });
     g.setAttribute("aria-label", day.date + " " + day.weekday + " " + (isValid(day) ? "有效" + fmtDur(day.active_seconds) : "无数据"));
     if (day.date === selectedDate) g.classList.add("selected");
 
@@ -792,7 +813,7 @@ function renderTimeline(day) {
     const sx = xOf(seg.start_sec), ex = xOf(seg.end_sec);
     const hitW = Math.max(9, ex - sx);
     const hit = el("rect", { x: sx - (hitW - (ex - sx)) / 2, y: stripY - 4, width: hitW, height: stripH + 8, class: "seg-hit" });
-    const kindLabel = seg.kind === "active" ? "专注 / 有效" : seg.kind === "fun" ? "娱乐 / 刷视频" : "中断 / 摸鱼";
+    const kindLabel = seg.kind === "active" ? LABELS.active : seg.kind === "fun" ? LABELS.fun : LABELS.idle;
     const kindKey = seg.kind === "active" ? "a" : seg.kind === "fun" ? "f" : "i";
     hit.addEventListener("pointermove", evt => showTooltip(evt, [
       ttHead(kindLabel),
@@ -807,9 +828,9 @@ function renderTimeline(day) {
   svg.appendChild(el("line", { x1: x2, x2: x2, y1: stripY - 6, y2: stripY + stripH, class: "flag-tick" }));
   const near = (x2 - x1) < 130;
   const la = el("text", { x: x1, y: stripY - 11, class: "flag-label", "text-anchor": x1 < 60 ? "start" : "middle" });
-  la.textContent = "到达 " + day.arrival;
+  la.textContent = LABELS.arrival + " " + day.arrival;
   const ld = el("text", { x: near ? x2 + 6 : x2, y: stripY - 11, class: "flag-label", "text-anchor": near ? "start" : (x2 > W - 60 ? "end" : "middle") });
-  ld.textContent = (day === TODAY ? "最近活动 " : "离开 ") + day.departure;
+  ld.textContent = (day === TODAY && !LABELS.manual ? "最近活动" : LABELS.departure) + ' ' + day.departure;
   svg.appendChild(la); svg.appendChild(ld);
 }
 
@@ -820,12 +841,12 @@ function renderDetail(day) {
   box.textContent = "";
   if (isValid(day)) {
     const rows = [
-      ["到达", day.arrival],
-      [day === TODAY ? "最近活动" : "离开", day.departure],
-      ["总在场", fmtDur(day.total_presence_seconds)],
-      ["有效科研", fmtDur(day.active_seconds)],
-      ["娱乐", fmtDur(day.fun_seconds)],
-      ["摸鱼 / 中断", fmtDur(day.idle_seconds)],
+      [LABELS.arrival, day.arrival],
+      [day === TODAY && !LABELS.manual ? "最近活动" : LABELS.departure, day.departure],
+      [LABELS.presence, fmtDur(day.total_presence_seconds)],
+      [LABELS.active, fmtDur(day.active_seconds)],
+      [LABELS.fun, fmtDur(day.fun_seconds)],
+      [LABELS.idle, fmtDur(day.idle_seconds)],
     ];
     rows.forEach(([k, v]) => {
       const d = document.createElement("div"); d.className = "stat";
@@ -845,8 +866,9 @@ function selectDay(date) {
 }
 
 /* ---------- 表格 ---------- */
-(function renderTable() {
+function renderTable() {
   const tbody = document.querySelector("#data-table tbody");
+  tbody.textContent = '';
   DATA.days.slice().reverse().forEach(day => {
     const tr = document.createElement("tr");
     if (day === TODAY) tr.className = "today-row";
@@ -863,9 +885,10 @@ function selectDay(date) {
     });
     tbody.appendChild(tr);
   });
-})();
+}
+renderTable();
 
-/* ---------- 初始化：hash 里记住的日期在 60s 自动刷新后仍保持选中 ---------- */
+/* ---------- 初始化：记住选中日期 ---------- */
 (function init() {
   const wanted = decodeURIComponent(location.hash.slice(1));
   const initial = DATA.days.some(d => d.date === wanted) ? wanted : TODAY.date;
@@ -893,7 +916,8 @@ def _open_in_browser(path: Path) -> None:
     """优先用浏览器自己的 --new-window 打开一个新窗口（一般会被窗口管理器带到前台）；
     如果 webbrowser 走 xdg-open 复用了已有窗口的某个后台标签页，双击图标会显得"没反应"。
     """
-    url = f"file://{path}"
+    from dashboard_server import ensure_server
+    url = ensure_server()
     for browser_cmd in (["google-chrome", "--new-window", url], ["firefox", "--new-window", url]):
         if shutil.which(browser_cmd[0]):
             try:

@@ -13,6 +13,7 @@ dashboard.html
 *.lock
 *.log
 *.pid
+*.tmp
 
 # Local credentials and editor settings
 .env

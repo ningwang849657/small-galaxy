@@ -31,20 +31,20 @@ header { padding:18px 0; margin:0; border-bottom:1px solid var(--border); }
 .ref-line { stroke-dasharray:4 5; }
 .insight-grid { display:grid; grid-template-columns:1.1fr 1fr; gap:22px; }
 .insight-grid .card { min-width:0; }
-.focus-card { background:#171923; color:#fff; position:relative; overflow:hidden; }
-.focus-card .eyebrow,.focus-card .muted { color:#b7bbcd; }
+.focus-card { background:var(--focus-bg); color:var(--focus-ink); position:relative; overflow:hidden; }
+.focus-card .eyebrow,.focus-card .muted { color:var(--focus-muted); }
 .focus-card h2 { margin:0 0 18px; font-size:24px; }
 .focus-layout { display:flex; align-items:center; gap:30px; }
-.ring { width:132px; height:132px; flex:none; border-radius:50%; background:conic-gradient(#8eaeff var(--progress,0%),#343744 0); display:grid; place-items:center; }
-.ring-inner { width:112px; height:112px; background:#171923; border-radius:50%; display:flex; flex-direction:column; justify-content:center; align-items:center; }
+.ring { width:132px; height:132px; flex:none; border-radius:50%; background:conic-gradient(var(--accent-light) var(--progress,0%),var(--focus-track) 0); display:grid; place-items:center; }
+.ring-inner { width:112px; height:112px; background:var(--focus-bg); border-radius:50%; display:flex; flex-direction:column; justify-content:center; align-items:center; }
 .ring strong { font-size:31px; letter-spacing:-.05em; }
-.ring small { font-size:11px; color:#b7bbcd; }
+.ring small { font-size:11px; color:var(--focus-muted); }
 .muted { color:var(--ink-3); font-size:12px; line-height:1.8; }
 .goal-controls { display:flex; gap:9px; align-items:center; margin-top:16px; font-size:12px; }
 select,button { font:inherit; cursor:pointer; border:1px solid var(--border); border-radius:999px; padding:8px 14px; background:var(--surface); color:var(--ink); }
 button:hover { background:#eaf3ff; color:#0071e3; }
 button:focus-visible,select:focus-visible,summary:focus-visible { outline:3px solid #0071e3; outline-offset:3px; }
-.focus-card select { background:#2b2e3b; color:white; border-color:#4b4e5b; padding:6px 10px; }
+.focus-card select { background:var(--focus-field); color:var(--focus-ink); border-color:var(--focus-field-border); padding:6px 10px; }
 .insight-number { font-size:36px; font-weight:650; letter-spacing:-.05em; margin:12px 0; }
 .hour-bars { display:flex; height:56px; align-items:end; gap:4px; margin-top:22px; }
 .hour-bars span { flex:1; background:#d9e9fb; border-radius:4px 4px 0 0; min-height:3px; }
@@ -68,3 +68,235 @@ footer { font-size:10px; line-height:1.8; }
 @media (max-width:860px) { .kpi-row { grid-template-columns:repeat(3,1fr); } .tile { padding:20px; } .tile .value { font-size:28px; } .insight-grid { grid-template-columns:1fr; gap:0; } }
 @media (max-width:560px) { body { padding:0 16px 24px; } .hero { padding:42px 0 32px; } .hero p { font-size:13px; } .kpi-row { grid-template-columns:1fr; gap:12px; } .tile { padding:22px; } .tile .label { margin-bottom:10px; } .tile .value { font-size:36px; margin-bottom:10px; } .card { padding:22px 18px; border-radius:20px; } .focus-layout { gap:18px; } .ring { width:112px; height:112px; } .ring-inner { width:94px; height:94px; } .card-head .hint { font-size:10px; } #bar-chart { min-height:165px; } #detail-stats { gap:15px 24px; } }
 @media (prefers-reduced-motion:no-preference) { .hero,.kpi-row,.insight-grid { animation:arrive .6s ease both; } .kpi-row { animation-delay:.08s; } .insight-grid { animation-delay:.15s; } @keyframes arrive { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } } }
+
+/* Personalization: semantic colors also apply to charts and form controls. */
+[hidden] { display:none!important; }
+/* 强调色：浅色底一套，深色底一套。深色主题统一带 data-dark，新增深色主题不用再抄一遍。 */
+:root { --accent-soft:#eaf3ff; --accent-light:#8eaeff; --hour:#d9e9fb; }
+:root[data-accent="purple"] { --active:#8452bf; --warm:#8452bf; --accent-soft:#f0eafa; --accent-light:#c3a6f4; --hour:#e3d9f3; }
+:root[data-accent="green"] { --active:#287d65; --warm:#287d65; --accent-soft:#e7f3ed; --accent-light:#9cd6bd; --hour:#d3e9de; }
+:root[data-accent="amber"] { --active:#9a6410; --warm:#9a6410; --accent-soft:#faf0e0; --accent-light:#e8b866; --hour:#f0e2c8; }
+:root[data-accent="rose"] { --active:#b03a63; --warm:#b03a63; --accent-soft:#fbeaf0; --accent-light:#f0a3c0; --hour:#f4d8e2; }
+:root[data-accent="teal"] { --active:#116e78; --warm:#116e78; --accent-soft:#e2f2f3; --accent-light:#86ccd4; --hour:#cfe8ea; }
+:root[data-accent="clay"] { --active:#a8512c; --warm:#a8512c; --accent-soft:#fbeee7; --accent-light:#eda884; --hour:#f3ddd0; }
+
+/* 浅色系：--ink 全部压到接近 #2a-#35 的深度，保证在各自的 --surface 上对比够。 */
+:root[data-theme="warm"] { --page:#f5f1e9; --surface:#fffcf5; --ink:#352e27; --ink-2:#6e6458; --ink-3:#786d60; --border:#e5ded1; --hairline:#e9e2d8; --gridline:#e9e2d8; }
+:root[data-theme="linen"] { --page:#f2f0ec; --surface:#fdfcfa; --ink:#2b2825; --ink-2:#63605a; --ink-3:#756f68; --border:#e3dfd8; --hairline:#eae6e0; --gridline:#eae6e0; --baseline:#cec9c1; --idle:#d6d1c9; }
+:root[data-theme="mist"] { --page:#eef1ee; --surface:#fbfdfb; --ink:#232a27; --ink-2:#5c6663; --ink-3:#68736f; --border:#dde4e0; --hairline:#e4eae6; --gridline:#e4eae6; --baseline:#c6d0cb; --idle:#ccd6d1; }
+:root[data-theme="sky"] { --page:#edf1f6; --surface:#fafcff; --ink:#1e2733; --ink-2:#556170; --ink-3:#68737f; --border:#dbe3ec; --hairline:#e3e9f1; --gridline:#e3e9f1; --baseline:#c3cddb; --idle:#ccd6e2; }
+:root[data-theme="dusk"] { --page:#f1eff5; --surface:#fdfcff; --ink:#2a2533; --ink-2:#615a70; --ink-3:#736c81; --border:#e2dee9; --hairline:#e8e5ef; --gridline:#e8e5ef; --baseline:#cbc4d6; --idle:#d3ccdd; }
+:root[data-theme="blush"] { --page:#f6eff1; --surface:#fffbfc; --ink:#2f2429; --ink-2:#6b5b62; --ink-3:#7c6b73; --border:#ebdde2; --hairline:#f0e6ea; --gridline:#f0e6ea; --baseline:#d9c5cc; --idle:#e0d0d6; }
+/* 深色系：墨色、强调色亮版与装饰配色都由 [data-dark] 统一给，这里只定底色和线条。 */
+:root[data-theme="dark"] { --page:#101116; --surface:#1c1e27; --border:#363949; --hairline:#30333f; --gridline:#30333f; --baseline:#5d647a; --idle:#666d80; }
+:root[data-theme="ink"] { --page:#111214; --surface:#1b1d20; --border:#33363b; --hairline:#2c2f33; --gridline:#2c2f33; --baseline:#5e626a; --idle:#666b73; }
+:root[data-theme="midnight"] { --page:#0b1020; --surface:#141b2f; --border:#2a3450; --hairline:#232c45; --gridline:#232c45; --baseline:#525d80; --idle:#5a6688; }
+:root[data-theme="night"] { --page:#0d1411; --surface:#16211c; --border:#2b3a33; --hairline:#26332d; --gridline:#26332d; --baseline:#55685e; --idle:#5c6f66; }
+:root[data-theme="cocoa"] { --page:#14100c; --surface:#201a14; --border:#3a2f25; --hairline:#312820; --gridline:#312820; --baseline:#6a5947; --idle:#71604e; }
+:root[data-theme="wine"] { --page:#160d12; --surface:#22161d; --border:#3d2833; --hairline:#33222c; --gridline:#33222c; --baseline:#6b4f5c; --idle:#735663; }
+/* 深色主题共用的墨色与强调色，避免每个深色主题重复一遍。 */
+:root[data-dark] { color-scheme:dark; --ink:#f2f3f7; --ink-2:#c0c3cf; --ink-3:#a2a8ba; --active:#73b5ff; --warm:#73b5ff; --accent-soft:#29394d; --accent-light:#8eaeff; --hour:#304d70; }
+:root[data-dark][data-accent="purple"] { --active:#c2a0f3; --warm:#c2a0f3; --accent-soft:#3b314d; --accent-light:#c3a6f4; --hour:#524366; }
+:root[data-dark][data-accent="green"] { --active:#8dd6b6; --warm:#8dd6b6; --accent-soft:#293f37; --accent-light:#9cd6bd; --hour:#335449; }
+:root[data-dark][data-accent="amber"] { --active:#f0c07a; --warm:#f0c07a; --accent-soft:#42351f; --accent-light:#e8b866; --hour:#5c4a2a; }
+:root[data-dark][data-accent="rose"] { --active:#f2a2c0; --warm:#f2a2c0; --accent-soft:#452735; --accent-light:#f0a3c0; --hour:#5e3549; }
+:root[data-dark][data-accent="teal"] { --active:#7fd3dd; --warm:#7fd3dd; --accent-soft:#1f3f43; --accent-light:#86ccd4; --hour:#2b555b; }
+:root[data-dark][data-accent="clay"] { --active:#efa985; --warm:#efa985; --accent-soft:#452a1e; --accent-light:#eda884; --hour:#5d3a29; }
+.hero { padding:48px 0 32px; }
+.hero::after { display:none; }
+.headline-scroll { overflow-x:auto; scrollbar-width:thin; }
+.hero h2 { font-size:clamp(28px,4.2vw,50px); white-space:nowrap; width:max-content; max-width:none; color:var(--ink); line-height:1.35; letter-spacing:-.055em; }
+.hero p { max-width:900px; overflow-wrap:anywhere; }
+.hero .eyebrow { font-size:10px; letter-spacing:.15em; }
+.header-actions { display:flex; gap:8px; margin-left:6px; }
+header { justify-content:flex-start; }
+header .pill { margin-left:auto; }
+.header-actions button { font-size:12px; }
+.insight-grid.single-card { grid-template-columns:1fr; }
+.hour-bars span { background:var(--hour); }
+.hour-bars span.peak { background:var(--active); }
+.ring { background:conic-gradient(var(--accent-light) var(--progress,0%),var(--focus-track) 0); }
+.music-card { background:var(--surface); padding:20px 24px; border-radius:22px; margin-bottom:22px; }
+.music-top,.music-label,.music-actions { display:flex; align-items:center; gap:16px; }
+.music-top { justify-content:space-between; flex-wrap:wrap; }
+.music-label { flex:1; min-width:220px; }
+.music-label>div { min-width:0; }
+.music-label .eyebrow { margin-bottom:4px; font-size:9px; letter-spacing:.13em; }
+#track-title { font-size:14px; font-weight:600; overflow-wrap:anywhere; }
+.music-icon { display:grid; place-items:center; width:44px; height:44px; flex:none; border-radius:14px; background:var(--accent-soft); color:var(--active); font-size:24px; }
+.music-actions { flex-wrap:wrap; gap:12px; font-size:12px; }
+.primary-button { background:var(--active); color:var(--surface); border-color:transparent; font-weight:600; }
+button:hover { background:var(--accent-soft); color:var(--active); }
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible { outline:3px solid var(--active); outline-offset:3px; }
+.volume-label,.loop-label { display:flex; align-items:center; gap:7px; color:var(--ink-2); }
+input[type="range"] { width:76px; accent-color:var(--active); }
+input[type="checkbox"] { accent-color:var(--active); width:16px; height:16px; }
+.track-chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; padding-top:16px; border-top:1px solid var(--hairline); }
+.track-chips button { font-size:11.5px; padding:7px 13px; color:var(--ink-2); }
+.track-chips button.current { background:var(--active); border-color:transparent; color:var(--surface); font-weight:600; }
+.track-chips button.current:hover { background:var(--active); color:var(--surface); }
+/* 播放器只当音源用：移出视口而不是 display:none —— 隐藏的 iframe 会被浏览器暂停。
+   保留真实尺寸，卡片上只留一个"在 YouTube 打开"的文字入口。 */
+.music-card { position:relative; overflow:hidden; }
+#youtube-wrap { position:absolute; left:-10000px; top:0; width:320px; height:180px; pointer-events:none; }
+#youtube-wrap iframe { width:320px; height:180px; display:block; border:0; }
+#music-external { display:inline-block; font-size:11px; color:var(--active); margin-top:6px; }
+dialog { width:min(580px,calc(100vw - 24px)); max-height:88dvh; padding:28px; border:1px solid var(--border); border-radius:26px; background:var(--surface); color:var(--ink); box-shadow:0 24px 100px #0004; overflow:auto; }
+dialog::backdrop { background:#11182755; backdrop-filter:blur(8px); }
+.settings-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+.settings-head h2 { font-size:29px; margin:0; letter-spacing:-.05em; }
+.settings-head .eyebrow { margin-bottom:7px; }
+fieldset { border:0; padding:0; margin:0 0 22px; min-width:0; }
+legend { font-weight:650; font-size:16px; margin-bottom:16px; }
+dialog label { display:block; color:var(--ink-2); font-size:12px; margin-bottom:8px; }
+dialog label span { color:var(--ink-3); margin-left:5px; font-size:10px; }
+dialog input:not([type="checkbox"]),dialog textarea,dialog select { box-sizing:border-box; width:100%; border:1px solid var(--border); background:var(--page); color:var(--ink); font:inherit; font-size:13px; padding:11px 12px; border-radius:12px; margin-bottom:16px; }
+dialog textarea { resize:vertical; }
+.settings-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.settings-grid select { margin:8px 0 0; }
+.settings-grid input:not([type="checkbox"]) { margin:8px 0 0; }
+.settings-grid input[type="range"] { width:100%; margin:14px 0 0; }
+.color-row { display:flex; gap:8px; align-items:center; margin-top:8px; }
+.color-row input[type="color"] { flex:none; width:46px; height:38px; padding:2px; margin:0; cursor:pointer; }
+.color-row button { flex:1; font-size:11px; padding:9px 8px; }
+#library-field button { margin-bottom:16px; font-size:12px; }
+#setting-decorStrength { width:100%; margin-top:8px; }
+legend span { font-weight:400; font-size:11px; color:var(--ink-3); margin-left:6px; }
+.settings-checks { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
+.settings-checks label { display:flex; align-items:center; gap:7px; margin:0; }
+.settings-buttons { display:flex; justify-content:flex-end; gap:10px; font-size:12px; }
+#music-form { margin-top:26px; padding-top:26px; border-top:1px solid var(--hairline); }
+#settings-feedback { position:sticky; bottom:-28px; background:var(--surface); padding:12px 0; margin:12px 0 0; color:var(--active); }
+.compact .hero { padding:28px 0 20px; }
+.compact .card,.compact .tile { padding:20px; border-radius:18px; }
+.compact .tile .value { margin-bottom:10px; }
+.compact .music-card { padding:15px 20px; }
+@media (max-width:560px) { header { flex-wrap:wrap; gap:12px; } .header-actions { margin:0; } .header-actions button { padding:7px 12px; } .hero { padding:30px 0 24px; } .music-card { padding:18px; } .music-actions { gap:10px; } .music-actions button { padding:8px 11px; } .music-label .eyebrow { font-size:8px; } .settings-grid { grid-template-columns:1fr; gap:4px; } dialog { padding:22px; } .hero .eyebrow { font-size:8px; } }
+
+/* 「按自己的节奏」这张卡的配色，与页面主题独立选择。 */
+:root,:root[data-focus="night"] { --focus-bg:#171923; --focus-ink:#fff; --focus-muted:#b7bbcd; --focus-track:#343744; --focus-field:#2b2e3b; --focus-field-border:#4b4e5b; }
+:root[data-focus="forest"] { --focus-bg:#14261d; --focus-ink:#f0f7f2; --focus-muted:#a7c3b3; --focus-track:#2c4536; --focus-field:#243a2d; --focus-field-border:#3e5c4a; }
+:root[data-focus="ocean"] { --focus-bg:#11212e; --focus-ink:#eef6fb; --focus-muted:#9dbcd0; --focus-track:#28414f; --focus-field:#1e3444; --focus-field-border:#37566a; }
+:root[data-focus="plum"] { --focus-bg:#231a2e; --focus-ink:#f5f0fa; --focus-muted:#bcabcf; --focus-track:#3d3050; --focus-field:#302542; --focus-field-border:#50406a; }
+:root[data-focus="clay"] { --focus-bg:#2b1f18; --focus-ink:#faf1ea; --focus-muted:#cbb0a0; --focus-track:#48342a; --focus-field:#3a2a21; --focus-field-border:#5c4436; }
+:root[data-focus="ember"] { --focus-bg:#2d1522; --focus-ink:#fdeef4; --focus-muted:#d3a5b8; --focus-track:#4c2739; --focus-field:#3d1e2e; --focus-field-border:#63344a; }
+/* 唯一的浅色款：墨色与底色整体反过来。 */
+:root[data-focus="paper"] { --focus-bg:#f4f1ea; --focus-ink:#2a2620; --focus-muted:#7b7364; --focus-track:#ddd6c7; --focus-field:#fffdf8; --focus-field-border:#ded7c8; }
+
+/* 时间卡的水位层：内容压在上面，水本身不参与点击。三张卡由深到浅，读得出主次。 */
+:root { --wave-deep:color-mix(in srgb,var(--active) 24%,transparent); --wave-shallow:color-mix(in srgb,var(--active) 6%,transparent); }
+.kpi-row .tile:nth-child(1) { --wave-deep:color-mix(in srgb,var(--active) 34%,transparent); --wave-shallow:color-mix(in srgb,var(--active) 11%,transparent); }
+.kpi-row .tile:nth-child(2) { --wave-deep:color-mix(in srgb,var(--active) 22%,transparent); --wave-shallow:color-mix(in srgb,var(--active) 7%,transparent); }
+.kpi-row .tile:nth-child(3) { --wave-deep:color-mix(in srgb,var(--active) 13%,transparent); --wave-shallow:color-mix(in srgb,var(--active) 4%,transparent); }
+.kpi-row .tile { position:relative; overflow:hidden; }
+.kpi-row .tile>*:not(.tile-wave) { position:relative; z-index:1; }
+.tile-wave { position:absolute; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
+.wave-fill { position:absolute; left:0; right:0; bottom:0; height:calc(var(--level,0) * 100%);
+  background:linear-gradient(to top,var(--wave-deep),var(--wave-shallow)); transition:height 1.2s cubic-bezier(.22,.68,.3,1); }
+.wave-crest { position:absolute; bottom:100%; left:0; width:100%; height:15px; display:block; overflow:hidden; }
+.crest-back { fill:var(--wave-shallow); }
+.crest-front { fill:var(--wave-shallow); }
+@media (prefers-reduced-motion:no-preference) {
+  .crest-back { animation:crest-drift 11s linear infinite; }
+  .crest-front { animation:crest-drift 7s linear infinite reverse; }
+  .wave-fill { animation:wave-bob 5.5s ease-in-out infinite alternate; }
+}
+@keyframes crest-drift { from { transform:translateX(0); } to { transform:translateX(-120px); } }
+@keyframes wave-bob { from { transform:translateY(1.6px); } to { transform:translateY(-1.6px); } }
+
+.tile .value { font-variant-numeric:tabular-nums; min-height:1.2em; }
+.tile .label { line-height:1.65; overflow-wrap:anywhere; }
+.no-motion *,.no-motion *::before,.no-motion *::after { animation:none!important; transition:none!important; }
+.scene-settings { padding-bottom:22px; border-bottom:1px solid var(--hairline); }
+dialog .motion-setting { display:flex; align-items:center; gap:8px; }
+.session-fields { display:grid; grid-template-columns:1.2fr 1fr 1fr 1.8fr; gap:14px; }
+.session-fields label { font-size:12px; color:var(--ink-2); }
+.session-fields input { display:block; box-sizing:border-box; width:100%; min-width:0; margin-top:8px; padding:10px 12px; font:inherit; color:var(--ink); background:var(--page); border:1px solid var(--border); border-radius:10px; }
+.session-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:18px 0; font-size:12px; }
+.session-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-top:1px solid var(--hairline); }
+.session-row>div:first-child { min-width:0; }
+.session-row strong { font-size:13px; font-weight:550; }
+.session-row .muted { display:block; overflow-wrap:anywhere; }
+.session-row-actions { display:flex; gap:7px; flex:none; font-size:11px; }
+.session-row-actions button { padding:6px 10px; }
+#session-list { max-height:280px; overflow:auto; }
+.manual-card .eyebrow { margin:0 0 8px; }
+@media (max-width:700px) { .session-fields { grid-template-columns:1fr 1fr; } .session-row { align-items:flex-start; } .session-row strong { font-size:11px; } }
+
+/* ---------- 装饰画：顶部森林精灵band + Hero 雨林降雨 ----------
+   全部是本地绘制的 SVG/CSS 图形，不含任何影片素材，也不发任何网络请求。 */
+/* 上下两条带子用两套绿：顶部是偏冷偏灰的雾林，Hero 是偏暖偏黄的热带，
+   两者不至于糊成一整片。 */
+:root { --decor-forest:#4a6b63; --decor-deep:#33534e; --decor-jungle:#2f6b3d; --decor-jungle-deep:#1d5330; --decor-rain:#3f7f9c; --decor-mist:#dfe9e4; --decor-spirit:#f7faf6; --decor-spirit-face:#33534e; --decor-storm:#3d566b; --decor-sun:#ffc247; --decor-core:#ffb01f; }
+:root[data-theme="warm"] { --decor-forest:#5d6a56; --decor-deep:#414f3c; --decor-jungle:#4f6c34; --decor-jungle-deep:#3a5527; --decor-rain:#5f838d; --decor-mist:#e6dcc7; --decor-spirit:#fffcf5; --decor-spirit-face:#414f3c; --decor-storm:#5a5d50; --decor-sun:#f5b44e; --decor-core:#e89b2a; }
+/* 深色主题下精灵不能跟着页面变黑，否则身体和凹洞又反了过来。 */
+:root[data-dark] { --decor-forest:#5d8f85; --decor-deep:#3a6c63; --decor-jungle:#4f9a5f; --decor-jungle-deep:#2f7043; --decor-rain:#8ec8e2; --decor-mist:#22343a; --decor-spirit:#cfe0da; --decor-spirit-face:#121b22; --decor-storm:#03070d; --decor-sun:#ffd070; --decor-core:#fff0c4; }
+
+header { position:relative; overflow:hidden; padding:26px 0 24px; }
+header>*:not(#forest-band) { position:relative; z-index:1; }
+#forest-band { position:absolute; z-index:0; inset:0 auto 0 50%; width:100vw; transform:translateX(-50%); height:100%; pointer-events:none; }
+.forest-far { fill:var(--decor-forest); opacity:calc(.16 * var(--decor-strength,1)); }
+.forest-near { fill:var(--decor-deep); opacity:calc(.26 * var(--decor-strength,1)); }
+.forest-mist { fill:url(#forest-fade); }
+#forest-fade .fade-top { stop-color:var(--page); stop-opacity:.94; }
+#forest-fade .fade-bottom { stop-color:var(--page); stop-opacity:0; }
+/* 木灵是浅色的身体配深色凹洞；反过来做就只剩一颗骷髅头。 */
+.spirits { opacity:calc(.9 * var(--decor-strength,1)); }
+.spirits .spirit-body { fill:var(--decor-spirit); stroke:var(--decor-spirit-face); stroke-width:1.1; vector-effect:non-scaling-stroke; }
+.spirits .spirit-face { fill:var(--decor-spirit-face); }
+.motes circle { fill:var(--decor-forest); opacity:calc(.34 * var(--decor-strength,1)); }
+@media (prefers-reduced-motion:no-preference) {
+  .kodama-head { transform-box:fill-box; transform-origin:50% 96%; animation:kodama-tilt 4s ease-in-out infinite alternate; }
+  .motes circle { animation:mote-drift 7s ease-in-out infinite alternate; }
+}
+@keyframes kodama-tilt { from { transform:rotate(-11deg); } to { transform:rotate(11deg); } }
+@keyframes mote-drift { from { transform:translateY(5px); opacity:.14; } to { transform:translateY(-9px); opacity:.5; } }
+
+.rain-scene { position:absolute; z-index:0; top:0; bottom:0; left:50%; width:100vw; transform:translateX(-50%); pointer-events:none; overflow:hidden; }
+.hero>*:not(.rain-scene) { position:relative; z-index:1; }
+.rain-foliage { position:absolute; inset:0; width:100%; height:100%; }
+.foliage-back { fill:var(--decor-jungle); opacity:calc(.15 * var(--decor-strength,1)); }
+.foliage-front { fill:var(--decor-jungle-deep); opacity:calc(.26 * var(--decor-strength,1)); }
+.leaf-rib { fill:none; stroke:currentColor; stroke-width:2.4; opacity:.55; }
+.rain-mist { position:absolute; left:-30%; width:70%; height:34%; border-radius:50%; background:radial-gradient(closest-side,var(--decor-mist),transparent); opacity:calc((.28 + .42 * var(--storm,.3)) * var(--decor-strength,1)); animation:mist-drift linear infinite; }
+.rain-layer { position:absolute; inset:0; }
+.rain-layer span { position:absolute; top:-16%; width:1.4px; height:var(--len); border-radius:1px; background:linear-gradient(to bottom,transparent,var(--decor-rain)); animation:rain-fall linear infinite; }
+/* 每层雨的可见度由天气相位给出，雨滴动画本身从不重启。 */
+.rain-far { opacity:calc(.42 * var(--rain-far,.3) * var(--decor-strength,1)); }
+.rain-mid { opacity:calc(.72 * var(--rain-mid,0) * var(--decor-strength,1)); }
+.rain-near { opacity:calc(1 * var(--rain-near,0) * var(--decor-strength,1)); }
+.rain-near span { width:2.4px; }
+.rain-splashes { position:absolute; inset:auto 0 6px; height:16px; opacity:calc(var(--rain-mid,0) * var(--decor-strength,1)); }
+.rain-splashes span { position:absolute; bottom:0; width:16px; height:5px; margin-left:-8px; border:1px solid var(--decor-rain); border-radius:50%; opacity:0; animation:ripple ease-out infinite; }
+.storm-veil { position:absolute; inset:0; background:linear-gradient(to bottom,var(--decor-storm),transparent 82%); opacity:calc(.6 * var(--storm,0) * var(--decor-strength,1)); }
+/* 放晴：暖光洗过整个画面，再加一轮带光芒的太阳。淡黄配浅底容易糊，所以核心要实、要有光芒。 */
+.sun-wash { position:absolute; inset:0; background:linear-gradient(215deg,var(--decor-sun),transparent 58%); opacity:calc(.34 * var(--sun,0) * var(--decor-strength,1)); }
+.rain-sun { position:absolute; top:5%; right:11%; width:172px; height:172px; opacity:calc(var(--sun,0) * var(--decor-strength,1)); }
+.rain-sun span { position:absolute; inset:0; border-radius:50%; }
+.sun-rays { background:repeating-conic-gradient(from 0deg,var(--decor-sun) 0deg 2.4deg,transparent 2.4deg 18deg);
+  -webkit-mask-image:radial-gradient(closest-side,transparent 26%,#000 44%,transparent 88%);
+  mask-image:radial-gradient(closest-side,transparent 26%,#000 44%,transparent 88%); opacity:.7; }
+.sun-halo { background:radial-gradient(closest-side,var(--decor-sun) 18%,transparent 74%); }
+.sun-core { inset:35%!important; background:var(--decor-core); box-shadow:0 0 26px 10px var(--decor-sun); }
+@media (prefers-reduced-motion:no-preference) {
+  .rain-sun { animation:sun-breathe 9s ease-in-out infinite alternate; }
+  .sun-rays { animation:sun-spin 70s linear infinite; }
+}
+@keyframes sun-breathe { from { transform:scale(.95); } to { transform:scale(1.05); } }
+@keyframes sun-spin { to { transform:rotate(360deg); } }
+@keyframes rain-fall { from { transform:translate3d(12px,-20px,0); } to { transform:translate3d(-18px,400px,0); } }
+@keyframes mist-drift { from { transform:translateX(0); } to { transform:translateX(210%); } }
+@keyframes ripple { 0% { transform:scale(.3); opacity:.55; } 70%,100% { transform:scale(1.5); opacity:0; } }
+/* 关掉动画时雨滴会僵在半空，直接收起雨与雾，只留植物剪影。 */
+.no-motion .rain-layer,.no-motion .rain-splashes,.no-motion .rain-mist { display:none; }
+.no-decor #forest-band,.no-decor .rain-scene { display:none; }
+
+/* GitHub 头像：hero 底部的署名，图片是内嵌 data URI，点击才会去 github.com。 */
+.hero-foot { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-top:20px; }
+.hero-foot .hero-meta { margin:0!important; }
+.author-chip { display:inline-flex; align-items:center; gap:10px; padding:6px 14px 6px 6px; border-radius:999px; text-decoration:none; color:var(--ink); background:color-mix(in srgb,var(--surface) 82%,transparent); border:1px solid var(--border); }
+.author-chip:hover { background:var(--surface); border-color:var(--active); }
+.author-chip img { width:34px; height:34px; border-radius:50%; display:block; }
+.author-chip strong { display:block; font-size:12px; font-weight:600; letter-spacing:-.01em; }
+.author-chip small { display:block; font-size:10px; color:var(--ink-3); letter-spacing:.08em; }
+@media (max-width:560px) { header { padding:18px 0 16px; } .hero-foot { gap:12px; } }
