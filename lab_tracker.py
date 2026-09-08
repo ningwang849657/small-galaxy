@@ -2,16 +2,14 @@
 """后台守护进程：每隔固定时间采样一次系统空闲秒数，写入按天分文件的 CSV 日志。"""
 import csv
 import datetime
-import fcntl
-import re
-import shutil
-import subprocess
+import os
 import sys
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dashboard import regenerate_dashboard_html
+from probes import detect_probe, unsupported_message
 from summary import FUN_KEYWORDS_PATH
 
 LOG_DIR = Path.home() / ".lab_tracker" / "logs"
@@ -19,63 +17,34 @@ LOCK_PATH = Path.home() / ".lab_tracker" / "lab_tracker.lock"
 SAMPLE_INTERVAL_SECONDS = 60
 DASHBOARD_REFRESH_EVERY_N_SAMPLES = 5  # 每 5 次采样（5 分钟）后台重新生成一次仪表盘
 CSV_HEADER = ["timestamp", "idle_seconds", "window_title"]
-TITLE_MAX_LEN = 120  # 窗口标题截断长度，够识别网站名，避免日志无限膨胀
+
+
+def lock_exclusively(lock_file) -> None:
+    """给已打开的锁文件加一把非阻塞独占锁。POSIX 用 flock，Windows 用 msvcrt。
+    两者都由内核在进程退出时自动释放，不会留下需要手动清理的"僵尸锁"。
+    """
+    if os.name == "nt":
+        import msvcrt
+        msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)
+    else:
+        import fcntl
+        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
 
 def acquire_single_instance_lock():
-    """保证同一时间只有一个采样进程在写日志，避免手动测试和 systemd 服务同时跑导致数据错乱。
-    用 flock 而不是 PID 文件：进程崩溃或被 kill 时内核会自动释放锁，不会留下需要手动清理的"僵尸锁"。
-    """
+    """保证同一时间只有一个采样进程在写日志，避免手动测试和后台服务同时跑导致数据错乱。"""
     LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
     lock_file = LOCK_PATH.open("w")
     try:
-        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        lock_exclusively(lock_file)
     except OSError:
         print(
-            "已经有一个 lab_tracker.py 在运行了（可能是 systemd 服务，也可能是另一个手动启动的实例），"
+            "已经有一个 lab_tracker.py 在运行了（可能是后台服务，也可能是另一个手动启动的实例），"
             "本次启动直接退出，避免两边同时写日志。",
             file=sys.stderr,
         )
         sys.exit(1)
     return lock_file  # 调用方需要持有这个引用，不能被垃圾回收，否则锁会被释放
-
-
-def get_idle_seconds():
-    """调用 xprintidle 获取空闲毫秒数并转换为秒。命令不存在或调用失败时返回 None。"""
-    if shutil.which("xprintidle") is None:
-        return None
-    try:
-        result = subprocess.run(
-            ["xprintidle"], capture_output=True, text=True, timeout=5, check=True
-        )
-        return int(result.stdout.strip()) / 1000
-    except (subprocess.SubprocessError, ValueError, OSError):
-        return None
-
-
-def get_active_window_title() -> str:
-    """取当前前台窗口的标题（用于识别娱乐网站）。取不到时返回空字符串，不影响采样。"""
-    if shutil.which("xprop") is None:
-        return ""
-    try:
-        out = subprocess.run(
-            ["xprop", "-root", "_NET_ACTIVE_WINDOW"],
-            capture_output=True, text=True, timeout=5, check=True,
-        ).stdout
-        m = re.search(r"window id # (0x[0-9a-fA-F]+)", out)
-        if not m or m.group(1) == "0x0":
-            return ""
-        out2 = subprocess.run(
-            ["xprop", "-id", m.group(1), "_NET_WM_NAME", "WM_NAME"],
-            capture_output=True, text=True, timeout=5, check=True,
-        ).stdout
-        for pattern in (r'_NET_WM_NAME\(UTF8_STRING\) = "(.*)"', r'WM_NAME\((?:STRING|COMPOUND_TEXT)\) = "(.*)"'):
-            m2 = re.search(pattern, out2)
-            if m2:
-                return m2.group(1)[:TITLE_MAX_LEN]
-        return ""
-    except (subprocess.SubprocessError, OSError):
-        return ""
 
 
 def migrate_today_log_schema() -> None:
@@ -126,6 +95,15 @@ def append_record(timestamp: datetime.datetime, idle_seconds: float, window_titl
 
 
 def main() -> None:
+    # 先确认这台机器上有能用的采样后端，再去抢锁：装不上就明确报错退出，
+    # 而不是让服务"起来了但数字永远是 0"，那种失败最难排查。
+    probe = detect_probe()
+    if probe is None:
+        raise SystemExit(unsupported_message())
+    print(f"采样后端: {probe.label}", file=sys.stderr)
+    if probe.note:
+        print(f"注意: {probe.note}", file=sys.stderr)
+
     _lock_file = acquire_single_instance_lock()
     migrate_today_log_schema()
     seed_fun_keywords_file()
@@ -133,19 +111,19 @@ def main() -> None:
     sample_count = 0
     while True:
         now = datetime.datetime.now()
-        idle = get_idle_seconds()
+        idle = probe.idle_seconds()
         if idle is None:
             consecutive_failures += 1
             # 第一次失败立刻提示，之后每小时（60 次采样）提示一次，避免日志刷屏
             if consecutive_failures == 1 or consecutive_failures % 60 == 0:
                 print(
-                    f"[{now.isoformat(timespec='seconds')}] 警告: 无法获取空闲时间，"
-                    "已跳过本次采样（请检查 xprintidle 是否已安装，以及 DISPLAY 是否可用）",
+                    f"[{now.isoformat(timespec='seconds')}] 警告: {probe.label} 后端暂时取不到空闲时间，"
+                    "已跳过本次采样",
                     file=sys.stderr,
                 )
         else:
             consecutive_failures = 0
-            append_record(now, idle, get_active_window_title())
+            append_record(now, idle, probe.window_title())
 
         sample_count += 1
         if sample_count % DASHBOARD_REFRESH_EVERY_N_SAMPLES == 0:

@@ -44,6 +44,32 @@ class DashboardTests(unittest.TestCase):
             self.assertNotIn('__AVATAR_SRC__', dashboard.render_html({'days': []}))
 
 
+class DaemonStatusTests(unittest.TestCase):
+    """Status comes from how fresh the newest sample is, so it works without systemd."""
+
+    def _records(self, age_seconds):
+        stamp = datetime.datetime.now() - datetime.timedelta(seconds=age_seconds)
+        return lambda date: [(stamp, 0.0, '')] if date == stamp.date() else []
+
+    def test_recent_sample_reads_as_recording(self):
+        with patch.object(dashboard, 'load_records', self._records(30)):
+            self.assertEqual(dashboard.check_daemon_status(), 'active')
+
+    def test_stale_sample_reads_as_stopped(self):
+        with patch.object(dashboard, 'load_records', self._records(3600)):
+            self.assertEqual(dashboard.check_daemon_status(), 'inactive')
+
+    def test_no_logs_at_all_is_unknown(self):
+        with patch.object(dashboard, 'load_records', lambda date: []):
+            self.assertEqual(dashboard.check_daemon_status(), 'unknown')
+
+    def test_status_does_not_shell_out(self):
+        # systemctl exists only on Linux; asking it would break macOS and Windows.
+        with patch.object(dashboard, 'load_records', self._records(10)), \
+             patch.object(dashboard.subprocess, 'run', side_effect=AssertionError('must not run a command')):
+            self.assertEqual(dashboard.check_daemon_status(), 'active')
+
+
 class ThemeContrastTests(unittest.TestCase):
     """Every page theme must stay readable; a new palette cannot quietly drop below WCAG AA."""
 

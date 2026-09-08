@@ -122,7 +122,8 @@ dashboard.py                  生成仪表盘 HTML（自包含，无需联网/�
 desktop/lab-tracker.desktop  桌面图标 / 应用菜单的启动器文件（应用名 小银河），Exec 指向 dashboard.py
 icons/galaxy.svg              小银河的图标（星系插画）
 icons/github-avatar.jpg       GitHub 头像，生成页面时编码成 data URI 内嵌
-systemd/lab-tracker.service  systemd --user 服务单元文件
+autostart/                    开机自启模板：Linux 的 systemd unit、macOS 的 launchd plist、Windows 的启动脚本
+probes.py                     各平台取"空闲时间"和"窗口标题"的后端，上层代码不感知平台差异
 tests/make_fake_day.py       生成模拟数据，验证 summary.py 计算逻辑（不依赖 xprintidle）
 ```
 
@@ -162,7 +163,7 @@ cat ~/.lab_tracker/logs/$(date +%F).csv
 
 ```bash
 mkdir -p ~/.config/systemd/user
-cp /home/ning/lab_tracker/systemd/lab-tracker.service ~/.config/systemd/user/
+cp /home/ning/lab_tracker/autostart/lab-tracker.service ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now lab-tracker.service
 ```
@@ -366,4 +367,6 @@ rm ~/.lab_tracker/logs/2099-01-*.csv
 
 - 到达/离开的判定依赖"两次真实操作之间的间隔"，如果工作持续跨越了午夜（比如凌晨还在肝论文），会被自然日分文件的机制从中间切成"昨天的离开"和"今天的到达"两段——这是按天分文件天然带来的边界情况，没有做跨天合并。
 - 前提假设是"电脑只在你在实验室时使用"，如果偶尔远程登录这台机器，会被误判为在实验室。
-- `xprintidle` 依赖 X11（`echo $XDG_SESSION_TYPE` 现在是 `x11`，没问题）；如果以后这台机器换成纯 Wayland 会话，`xprintidle` 可能会失效，到时候需要换一种取空闲时间的方式（比如换成读 `org.gnome.Mutter.IdleMonitor` 之类的 D-Bus 接口）。
+- Wayland 会话读不到前台窗口标题（Wayland 有意不让程序读别的窗口的标题，是安全设计），所以在 GNOME/KDE 的 Wayland 下「娱乐时间」不会被单独拆出来，那部分时间会算进有效时间里。时间统计本身不受影响。
+- macOS 上要拿到真正的窗口标题（而不只是程序名，例如只知道是 Chrome、不知道在看 bilibili）需要在「系统设置 → 隐私与安全性 → 辅助功能」里给终端或 Python 授权；没授权时会自动退回程序名。
+- 只在 Linux/X11 上做过长期实跑。Windows、macOS 和 Wayland 三个后端的解析逻辑有单元测试覆盖（`tests/test_probes.py`），但没有在真机上跑过完整的一天。

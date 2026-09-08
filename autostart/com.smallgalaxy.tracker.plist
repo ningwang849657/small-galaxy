@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- macOS 开机自启。把 __PROJECT_DIR__ 换成本项目的绝对路径，然后：
+       cp autostart/com.smallgalaxy.tracker.plist ~/Library/LaunchAgents/
+       launchctl load ~/Library/LaunchAgents/com.smallgalaxy.tracker.plist
+     停止：launchctl unload ~/Library/LaunchAgents/com.smallgalaxy.tracker.plist -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.smallgalaxy.tracker</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>__PROJECT_DIR__/lab_tracker.py</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardErrorPath</key>
+  <string>/tmp/small-galaxy.log</string>
+</dict>
+</plist>

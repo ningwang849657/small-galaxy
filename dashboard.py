@@ -16,24 +16,29 @@ from summary import DEFAULT_THRESHOLD_SECONDS, build_day_segments, load_records
 DATA_DIR = Path.home() / ".lab_tracker"
 DASHBOARD_PATH = DATA_DIR / "dashboard.html"
 WINDOW_DAYS = 14
-SERVICE_NAME = "lab-tracker.service"
+STALE_AFTER_SECONDS = 180
 # 头像内嵌为 data URI，页面打开时不会向 github.com 发请求；换头像后重新下载这个文件即可。
 GITHUB_USER = "ningwang849657"
 AVATAR_PATH = Path(__file__).resolve().parent / "icons" / "github-avatar.jpg"
 
 
 def check_daemon_status() -> str:
-    try:
-        result = subprocess.run(
-            ["systemctl", "--user", "is-active", SERVICE_NAME],
-            capture_output=True,
-            text=True,
-            timeout=3,
-        )
-    except (subprocess.SubprocessError, OSError):
+    """按"最近一条采样有多新"判断是否在记录。
+
+    原来问的是 systemctl，但 macOS 用 launchd、Windows 用计划任务，都没有这个命令；
+    而且"服务单元已加载"和"数据真的在进来"并不等价——后者才是用户关心的事。
+    """
+    newest = None
+    today = datetime.date.today()
+    for date in (today, today - datetime.timedelta(days=1)):
+        records = load_records(date)
+        if records:
+            newest = max(newest or records[-1][0], records[-1][0])
+    if newest is None:
         return "unknown"
-    state = result.stdout.strip()
-    return state if state in ("active", "inactive", "failed") else "unknown"
+    behind = (datetime.datetime.now() - newest).total_seconds()
+    # 采样间隔 60 秒，留三倍余量：偶尔一次卡顿不该显示成"未在记录"。
+    return "active" if behind <= STALE_AFTER_SECONDS else "inactive"
 
 
 def _seconds_since_midnight(dt: datetime.datetime) -> float:
@@ -901,13 +906,17 @@ renderTable();
 
 
 def _notify(title: str, body: str) -> None:
-    """双击图标后给一个立刻可见的桌面通知，不管浏览器窗口有没有跳到前台，
-    都能让人确认"点击生效了"。notify-send 不存在就直接跳过，不影响主流程。
+    """双击图标后给一个立刻可见的桌面通知，让人确认"点击生效了"。
+    每个平台的通知方式不同，都拿不到就安静跳过，绝不影响主流程。
     """
-    if shutil.which("notify-send") is None:
-        return
+    if sys.platform == "darwin":
+        command = ["osascript", "-e", f'display notification "{body}" with title "{title}"']
+    elif shutil.which("notify-send"):
+        command = ["notify-send", title, body]
+    else:
+        return  # Windows 没有免依赖的通知方式，直接跳过
     try:
-        subprocess.run(["notify-send", title, body], timeout=3)
+        subprocess.run(command, timeout=3)
     except (subprocess.SubprocessError, OSError):
         pass
 

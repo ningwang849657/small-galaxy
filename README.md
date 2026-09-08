@@ -8,7 +8,7 @@
 
 ## 它能做什么
 
-**记录**　`xprintidle` 每 60 秒采一次系统空闲时间，同时记下前台窗口标题，写成按天分文件的 CSV。刷 bilibili / YouTube 的时间会单独归为「娱乐」，不算进有效时间。原始日志只留在 `~/.lab_tracker/`，不上传、不出本机。
+**记录**　每 60 秒采一次系统空闲时间，同时记下前台窗口标题，写成按天分文件的 CSV。刷 bilibili / YouTube 的时间会单独归为「娱乐」，不算进有效时间。原始日志只留在 `~/.lab_tracker/`，不上传、不出本机。
 
 **统计**　今日 / 近 7 天 / 近 14 天日均三张时间卡、14 天堆叠柱状图、单日 24 小时时间线、按小时累计的活跃时段、最长连续活动与 ≥25 分钟片段，都能导出 CSV。
 
@@ -48,21 +48,36 @@
 | --- | --- |
 | <img src="docs/screenshots/settings.png" width="380"> | <img src="docs/screenshots/mobile.png" width="260"> |
 
+## 系统要求
+
+只用 Python 3 标准库，不需要 pip 装任何东西。采样这一层按平台分成了不同后端，启动时自动选：
+
+| 系统 | 取空闲时间 | 取窗口标题 | 额外依赖 |
+| --- | --- | --- | --- |
+| Linux / X11 | `xprintidle` | `xprop` | `sudo apt install xprintidle` |
+| Linux / Wayland（GNOME） | Mutter 的 D-Bus 接口 | ⚠️ 拿不到 | `gdbus`（glib2 自带） |
+| Linux / Wayland（KDE 等） | `org.freedesktop.ScreenSaver` | ⚠️ 拿不到 | 同上 |
+| Windows 10/11 | `GetLastInputInfo` | `GetForegroundWindow` | 无 |
+| macOS | `ioreg` 的 `HIDIdleTime` | `osascript` | 无（标题需「辅助功能」授权） |
+
+⚠️ **Wayland 读不到窗口标题**，这是它有意的安全设计，不是缺陷。时间统计完全正常，只是「娱乐时间」不会被单独拆出来。
+
+先确认你这台机器能用哪个后端：
+
+```bash
+python3 probes.py     # 打印选中的后端、当前空闲秒数和窗口标题
+```
+
 ## 快速开始
 
 ```bash
-sudo apt install xprintidle                     # 唯一的系统依赖
 git clone https://github.com/ningwang849657/small-galaxy.git
 cd small-galaxy
-
-cp systemd/lab-tracker.service ~/.config/systemd/user/   # 路径按需改
-systemctl --user daemon-reload
-systemctl --user enable --now lab-tracker.service        # 开始记录
-
-python3 dashboard.py                                     # 打开仪表盘
+python3 lab_tracker.py     # 前台跑，确认有数据进来，Ctrl+C 停止
+python3 dashboard.py       # 打开仪表盘
 ```
 
-只用 Python 标准库，不需要 pip 装任何东西。桌面图标的装法见[详细说明](docs/manual.md#5-仪表盘桌面图标点击运行应用名-小银河)。
+想开机自启，`autostart/` 里三个平台的模板都有（Linux 的 systemd unit、macOS 的 launchd plist、Windows 的启动脚本），装法见[详细说明](docs/manual.md)。
 
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py'   # 单元测试
