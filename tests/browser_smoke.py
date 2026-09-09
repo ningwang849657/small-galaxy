@@ -39,7 +39,22 @@ try {
  const rainArt=document.querySelector('.rainforest-backdrop');await rainArt.decode();
  check(rainArt.naturalWidth>1400,'painted rainforest decodes from its data URI');
  check(document.querySelectorAll('#forest-band .kodama').length>=4,'forest spirits drawn');
- check(document.querySelectorAll('.rain-layer span').length===110,'rain drops drawn');
+ // 星不是装饰：每一段 ≥25 分钟的持续专注对应一颗，今天的那几颗更亮。
+ const sustained=(day)=>day.segments.filter(s=>s.kind==='active'&&s.end_sec-s.start_sec>=1500).length;
+ const todays=sustained(TODAY), all=DATA.days.reduce((n,d)=>n+sustained(d),0);
+ check(document.querySelectorAll('.focus-stars .star').length===Math.min(all,60),
+   'one star per sustained focus block, got '+document.querySelectorAll('.focus-stars .star').length+' for '+all);
+ check(document.querySelectorAll('.focus-stars .star.today').length===Math.min(todays,60),
+   "today's blocks are the bright ones");
+ const textBox=document.querySelector('#hero-title').getBoundingClientRect();
+ [...document.querySelectorAll('.focus-stars .star')].forEach(star=>{
+   const b=star.getBoundingClientRect();
+   check(b.right<textBox.left||b.left>textBox.right||b.bottom<textBox.top||b.top>textBox.bottom,
+     'a star landed on the headline');
+ });
+ // 常态三层 110 条 + 雨墙 190 条；雨墙常驻 DOM，靠透明度浮现，不在骤雨来时重排。
+ const baseDrops=['far','mid','near'].reduce((n,k)=>n+document.querySelectorAll('.rain-'+k+' span').length,0);
+ check(baseDrops===110,'the everyday rain layers are drawn, got '+baseDrops);
  // One canvas only: the header row lives inside the hero, sharing its painting.
  const hero=document.querySelector('.hero');
  check(!document.querySelector('.forest-sanctuary'),'the second art panel is gone');
@@ -57,6 +72,11 @@ try {
  // One vertical rhythm, or the art panels read as bolted on.
  const gapOf=(a,b)=>Math.round(document.querySelector(b).getBoundingClientRect().top
                               -document.querySelector(a).getBoundingClientRect().bottom);
+ // 宽屏自适应：内容要跟着视口长，不能永远只占中间一条。
+ const wrapWidth=document.querySelector('.wrap').getBoundingClientRect().width;
+ check(wrapWidth/innerWidth>=.85,'the layout fills the viewport, only using '+Math.round(wrapWidth/innerWidth*100)+'%');
+ const pairCols=getComputedStyle(document.querySelector('.chart-pair')).gridTemplateColumns.split(' ').length;
+ check(pairCols===(innerWidth>=1700?2:1),'the two charts pair up only on wide screens');
  const topGap=Math.round(document.querySelector('.hero').getBoundingClientRect().top+scrollY);
  check(topGap>0,'the first panel is not flush against the top edge');
  const rhythm=[topGap,gapOf('.hero','.music-card'),gapOf('.music-card','.kpi-row'),gapOf('.kpi-row','.insight-grid')];
@@ -79,16 +99,32 @@ try {
  // Clouds precede a convective shower; fog, wet ground and leaf drip outlast it.
  const weatherOf=p=>{const w=weatherAt(p);return [Number(w.rain.toFixed(3)),Number(w.sun.toFixed(3))];};
  check(weatherOf(0)[0]===0 && weatherAt(0).mist>.8,'cycle starts in humid morning mist');
- check(weatherAt(.24).cloud>.8 && weatherOf(.24)[0]===0,'clouds build before the rain');
- check(weatherOf(.36)[0]===1,'cycle reaches a downpour');
- check(weatherOf(.6)[0]<weatherOf(.36)[0],'downpour eases off');
- check(weatherAt(.64).rain===0 && weatherAt(.64).drip>.8 && weatherAt(.64).mist>.9,'canopy drips and steams after rain');
- check(weatherOf(.86)[0]===0 && weatherOf(.86)[1]===1,'cycle clears to full sun');
+ check(weatherAt(.20).cloud>.8 && weatherOf(.20)[0]===0,'clouds build before the afternoon shower');
+ check(weatherOf(.32)[0]===1,'cycle reaches a downpour');
+ check(weatherOf(.54)[0]<weatherOf(.32)[0],'downpour eases off');
+ check(weatherAt(.58).rain===0 && weatherAt(.58).drip>.8 && weatherAt(.58).mist>.9,'canopy drips and steams after rain');
+ check(weatherOf(.76)[0]===0 && weatherOf(.76)[1]>.9,'cycle clears to full sun');
+ // 第二场雨是骤雨：晴空下疾风先到，一两秒内雨墙就落下，收得同样快。
+ check(weatherAt(.775).sun>.85 && weatherAt(.775).cloud<.35 && weatherAt(.775).wind>.5,
+   'a gust arrives while the sky is still clear');
+ check(weatherOf(.85)[0]===1,'the squall reaches full force');
+ const rose=phase=>{let a=null,b=null;
+   for(let p=phase[0];p<phase[1];p+=.001){const r=weatherAt(p).rain;
+     if(a===null&&r>=.1)a=p; if(a!==null&&b===null&&r>=.9){b=p;break;}}
+   return b-a;};
+ const slow=rose([.20,.40]), fast=rose([.76,.88]);
+ check(fast*4<slow,'the squall arrives far faster than the afternoon shower: '+fast.toFixed(3)+' vs '+slow.toFixed(3));
+ check(weatherAt(.93).rain<.1,'and clears just as abruptly');
  check(Math.abs(weatherOf(1)[0]-weatherOf(0)[0])<.001 && weatherOf(1)[1]===weatherOf(0)[1],'cycle wraps seamlessly');
  for(const key of WEATHER_FIELDS) check(Math.abs(weatherAt(1)[key]-weatherAt(0)[key])<.001,'all climate channels loop: '+key);
  for(let phase=0;phase<1;phase+=.01) for(const value of Object.values(weatherAt(phase))) check(value>=0 && value<=1,'climate values stay bounded');
  const rainLevel=()=>Number(getComputedStyle(document.querySelector('.rain-scene')).getPropertyValue('--rain-near'));
+ // 雨墙是"暴雨"专属的第四层：小雨时必须完全不出现，否则大雨就不特别了。
+ const squallLevel=()=>Number(getComputedStyle(document.querySelector('.rain-scene')).getPropertyValue('--squall'));
+ check(document.querySelectorAll('.rain-squall span').length===190,'the squall layer is dense');
+ window.applyWeatherSettings('drizzle',96); check(squallLevel()===0,'no wall of rain in a drizzle');
  window.applyWeatherSettings('storm',96); check(rainLevel()>.9,'fixed storm');
+ check(squallLevel()>.9,'a storm brings the full wall of rain');
  window.applyWeatherSettings('clear',96); check(rainLevel()===0,'fixed clear sky');
  check(document.querySelectorAll('.canopy-drips span').length===16,'leaf tip drips');
  check(document.querySelectorAll('.sun-shafts span').length===5,'canopy-filtered sun shafts');

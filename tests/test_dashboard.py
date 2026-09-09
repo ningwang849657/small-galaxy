@@ -133,7 +133,7 @@ class ThemeContrastTests(unittest.TestCase):
     """Every page theme must stay readable; a new palette cannot quietly drop below WCAG AA."""
 
     CSS = (Path(dashboard.__file__).parent / 'assets' / 'dashboard.css').read_text(encoding='utf-8')
-    LIGHT = ('light', 'warm', 'linen', 'mist', 'sky', 'dusk', 'blush')
+    LIGHT = ('light', 'warm', 'linen', 'moonpaper', 'mist', 'sky', 'dusk', 'blush')
     DARK = ('dark', 'ink', 'midnight', 'night', 'cocoa', 'wine')
 
     @staticmethod

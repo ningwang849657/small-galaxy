@@ -7,6 +7,11 @@ const header = document.querySelector('header');
 // 头像在生成时就内嵌成 data URI；文件缺失时 AVATAR_SRC 为空串，这里直接省略这块署名。
 const authorChip = AVATAR_SRC ? `<a class="author-chip" href="https://github.com/${GITHUB_USER}" target="_blank" rel="noopener noreferrer"><img src="${AVATAR_SRC}" alt="${GITHUB_USER} 的 GitHub 头像" width="34" height="34" decoding="async"><span><strong>${GITHUB_USER}</strong><small>GITHUB</small></span></a>` : '';
 header.insertAdjacentHTML('afterend', `<section class="hero"><div class="eyebrow">SMALL GALAXY · YOUR RESEARCH, IN TIME</div><div class="headline-scroll"><h2 id="hero-title">每一点专注，都有自己的光。</h2></div><p id="hero-signature">不必让每一天都满格。看见投入的时间，也给思考和休息留一点空间。</p><div class="hero-foot">${authorChip}<p class="hero-meta" id="hero-date"></p></div></section>`);
+// 署名和日期属于"这是谁的、哪一天的"，和品牌名是同一类信息，放一起更顺；
+// hero 只留下那句话。搬完 .hero-foot 就空了，直接收掉。
+const heroFoot = document.querySelector('.hero-foot');
+document.querySelector('.brand').after(...heroFoot.children);
+heroFoot.remove();
 document.getElementById('hero-date').textContent = TODAY.date + ' · ' + TODAY.weekday + '  /  你的私人科研时间记录';
 document.querySelector('.tagline').textContent = '记录日常，看见积累';
 document.querySelector('.kpi-row').insertAdjacentHTML('afterend', `
@@ -124,6 +129,13 @@ window.renderEmptyState = function () {
 };
 
 const detailCard = document.getElementById('detail-title').closest('.card');
+// 宽屏上把"每日时长"和"单日明细"并排，而不是把每张卡一直拉宽——
+// 屏幕变宽应该多显示内容，不是把同样的内容摊薄。窄屏下这层壳自动退回单列。
+const chartPair = document.createElement('div');
+chartPair.className = 'chart-pair';
+const barCard = document.getElementById('bar-chart').closest('.card');
+barCard.before(chartPair);
+chartPair.append(barCard, detailCard);
 detailCard.querySelector('.hint').remove();
 detailCard.querySelector('.card-head').insertAdjacentHTML('beforeend','<div class="detail-actions"><button id="prev-day" aria-label="前一天">←</button><button id="today-button">今天</button><button id="next-day" aria-label="后一天">→</button></div>');
 detailCard.insertAdjacentHTML('beforeend','<div class="session-summary" id="session-summary" aria-live="polite"></div>');

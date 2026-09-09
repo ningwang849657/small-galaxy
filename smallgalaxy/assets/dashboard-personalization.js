@@ -9,11 +9,12 @@ const OFFICIAL_TRACKS = Object.freeze([
 const trackByKey=key=>OFFICIAL_TRACKS.find(track=>track.key===key) || OFFICIAL_TRACKS[0];
 /* 主题、强调色、目标卡配色三套独立清单；深色主题另外标记 data-dark，共用一份深色墨色。 */
 const THEME_GROUPS=Object.freeze([
-  ['浅色',[['light','月光白'],['warm','暖纸色'],['linen','亚麻灰'],['mist','雾松青'],['sky','海盐蓝'],['dusk','暮山紫'],['blush','藕荷粉']]],
+  ['浅色',[['light','月光白'],['warm','暖纸色'],['linen','亚麻灰'],['moonpaper','月光纸'],['mist','雾松青'],['sky','海盐蓝'],['dusk','暮山紫'],['blush','藕荷粉']]],
   ['深色',[['dark','深空黑'],['ink','水墨黑'],['midnight','午夜蓝'],['night','深林夜'],['cocoa','可可棕'],['wine','酒红夜']]]
 ]);
 const DARK_THEMES=Object.freeze(THEME_GROUPS[1][1].map(([key])=>key));
 const ACCENT_OPTIONS=Object.freeze([['blue','星际蓝'],['purple','星云紫'],['green','森林绿'],['teal','青瓷'],['amber','琥珀金'],['rose','落樱粉'],['clay','陶土橙']]);
+const LAYOUT_OPTIONS=Object.freeze([['cards','卡片 · 分块浮起'],['sheet','整页 · 连成一片']]);
 const FOCUS_OPTIONS=Object.freeze([['night','深空黑'],['forest','深林绿'],['ocean','深海蓝'],['plum','暗夜紫'],['clay','陶土棕'],['ember','炭烬红'],['paper','月光纸']]);
 const THEMES=THEME_GROUPS.flatMap(([,options])=>options.map(([key])=>key));
 const ACCENTS=ACCENT_OPTIONS.map(([key])=>key);
@@ -27,8 +28,8 @@ const DEFAULT_PREFS = Object.freeze({
   signature:'不必让每一天都满格。看见投入的时间，也给思考和休息留一点空间。',
   brand:'小银河', tagline:'', eyebrow:'', kpiToday:'', kpiWeek:'', kpiAvg:'',
   goalHeading:'按自己的节奏。', rhythmHeading:'你的活跃时段', musicEyebrow:'A LITTLE SOUND, A LITTLE SPACE',
-  footerNote:'✦ 小银河', methodNote:'',
-  theme:'light', accent:'blue', accentCustom:'', focusStyle:'night', compact:false,
+  footerNote:'✦ 小银河 · 看见时间，而不是追赶时间', methodNote:'',
+  theme:'light', accent:'blue', accentCustom:'', focusStyle:'night', layout:'cards', compact:false,
   showGoal:true, showRhythm:true, showTimeline:true, showDecor:true, showMusic:true,
   decorStrength:100, weatherMode:'cycle', weatherCycle:96,
   scene:'research', customName:'学习', customSource:'manual', animations:true,
@@ -45,7 +46,7 @@ function readPreferences() {
   ['compact','showGoal','showRhythm','showTimeline','showDecor','showMusic','loop','animations'].forEach(key=>{
     if(typeof saved[key]==='boolean') prefs[key]=saved[key];
   });
-  for(const [key,values] of Object.entries({theme:THEMES,accent:ACCENTS,focusStyle:FOCUS_STYLES,musicMode:['official','library','youtube','audio','file'],scene:['research','work','exercise','custom'],customSource:['manual','computer'],officialTrack:OFFICIAL_TRACKS.map(track=>track.key),weatherMode:['cycle','drizzle','storm','clear']})) {
+  for(const [key,values] of Object.entries({theme:THEMES,accent:ACCENTS,focusStyle:FOCUS_STYLES,layout:LAYOUT_OPTIONS.map(([key])=>key),musicMode:['official','library','youtube','audio','file'],scene:['research','work','exercise','custom'],customSource:['manual','computer'],officialTrack:OFFICIAL_TRACKS.map(track=>track.key),weatherMode:['cycle','drizzle','storm','clear']})) {
     if(values.includes(saved[key])) prefs[key]=saved[key];
   }
   if(/^#[0-9a-f]{6}$/i.test(saved.accentCustom || '')) prefs.accentCustom=saved.accentCustom;
@@ -139,6 +140,7 @@ document.body.insertAdjacentHTML('beforeend', `
     <label>强调色<select id="setting-accent"></select></label>
   </div><div class="settings-grid">
     <label>目标卡配色<select id="setting-focusStyle"></select></label>
+    <label>版面<select id="setting-layout"></select></label>
     <label>自定义强调色<span class="color-row"><input id="setting-accentCustom" type="color"><button type="button" id="clear-accent">用预设</button></span></label>
     <label>天气<select id="setting-weatherMode"><option value="cycle">雨林循环：晨雾 → 积云 → 骤雨 → 雨后透光</option><option value="drizzle">林间细雨</option><option value="storm">热带骤雨</option><option value="clear">雨后晴光</option></select></label>
     <label>一轮天气时长 <span id="weather-cycle-value"></span><input id="setting-weatherCycle" type="range" min="20" max="600" step="4"></label>
@@ -167,7 +169,7 @@ const settingGoal=document.getElementById('setting-goal');
 Array.from(goalSelect.options).forEach(option=>settingGoal.add(option.cloneNode(true)));
 const settingTrack=document.getElementById('setting-official-track');
 OFFICIAL_TRACKS.forEach(track=>settingTrack.add(new Option(track.name,track.key)));
-[['accent',ACCENT_OPTIONS],['focusStyle',FOCUS_OPTIONS]].forEach(([key,options])=>{
+[['accent',ACCENT_OPTIONS],['focusStyle',FOCUS_OPTIONS],['layout',LAYOUT_OPTIONS]].forEach(([key,options])=>{
   const select=document.getElementById('setting-'+key);
   options.forEach(([value,label])=>select.add(new Option(label,value)));
 });
@@ -202,6 +204,7 @@ function applyAppearance() {
   root.dataset.theme=preferences.theme;
   root.dataset.accent=preferences.accent;
   root.dataset.focus=preferences.focusStyle;
+  root.dataset.layout=preferences.layout;
   // 深色主题共用一份墨色和装饰配色，靠这个标记选中，不必逐个主题重复写。
   if(DARK_THEMES.includes(preferences.theme)) root.dataset.dark='';
   else root.removeAttribute('data-dark');
@@ -229,7 +232,7 @@ new ResizeObserver(fitHeadline).observe(document.querySelector('.headline-scroll
 /* 一处列出所有可编辑项，读、写、恢复默认都走同一份清单。 */
 const EDITABLE_TEXT=['title','signature','brand','tagline','eyebrow','kpiToday','kpiWeek','kpiAvg',
   'goalHeading','rhythmHeading','musicEyebrow','footerNote','methodNote'];
-const EDITABLE_CHOICE=['theme','accent','focusStyle','weatherMode'];
+const EDITABLE_CHOICE=['theme','accent','focusStyle','layout','weatherMode'];
 const EDITABLE_FLAGS=['compact','showGoal','showRhythm','showTimeline','showDecor','showMusic'];
 const EDITABLE_RANGE=['decorStrength','weatherCycle'];
 function showFeedback(text) { document.getElementById('settings-feedback').textContent=text; }

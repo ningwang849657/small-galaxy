@@ -287,6 +287,8 @@ window.applySceneSettings=function() {
   if(!document.getElementById('session-date').value) resetSessionForm();
   renderStatus();renderSceneLabels();renderKPIs();renderGoal();renderRhythm();renderTable();
   window.renderEmptyState?.();
+  window.renderSpirits?.();
+  window.renderFocusStars?.();
   selectDay(DATA.days.some(day=>day.date===oldDate)?oldDate:TODAY.date);
   document.getElementById('peak-description').textContent+=currentScene().source==='manual'?' 按手动记录统计。':'';
 };

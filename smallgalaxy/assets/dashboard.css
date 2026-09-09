@@ -1,7 +1,13 @@
 /* Small Galaxy — quiet, local, personal. */
 :root { --page:#f5f5f7; --surface:#fff; --surface-2:#202126; --ink:#1d1d1f; --ink-2:#626269; --ink-3:#74747c; --border:#e8e8ed; --hairline:#ededf0; --active:#0071e3; --fun:#b276c8; --idle:#d5d7dd; --warm:#0071e3; --gridline:#ededf0; --baseline:#d5d5dc; }
 body { background:var(--page); padding:22px 32px 32px; letter-spacing:-.02em; }
-.wrap { max-width:1120px; }
+/* 宽屏自适应：内容跟着视口长，但要有上限——图表和卡片可以变宽，
+   长句子不行，行太长反而难读，所以下面单独给正文段落封顶。 */
+.wrap { max-width:clamp(1120px,92vw,2200px); }
+/* 两张图表卡：窄屏上下堆叠，宽屏并排。外壳自己保持 22px 的纵向节奏。 */
+.chart-pair { display:grid; gap:22px; margin-bottom:22px; }
+.chart-pair > .card { margin-bottom:0; min-width:0; }
+@media (min-width:1700px) { .chart-pair { grid-template-columns:1.15fr 1fr; align-items:start; } }
 #starfield { display:none; }
 header { padding:18px 0; margin:0; border-bottom:1px solid var(--border); }
 .brand h1 { font-size:19px; letter-spacing:-.04em; }
@@ -53,7 +59,7 @@ button:focus-visible,select:focus-visible,summary:focus-visible { outline:3px so
 .detail-actions { display:flex; align-items:center; gap:6px; }
 .detail-actions button { font-size:12px; padding:6px 12px; }
 button:disabled { opacity:.35; cursor:default; }
-.session-summary { border-top:1px solid var(--hairline); padding-top:15px; margin-top:12px; font-size:12px; color:var(--ink-2); line-height:1.8; }
+.session-summary { border-top:1px solid var(--hairline); padding-top:15px; margin-top:12px; font-size:12px; color:var(--ink-2); line-height:1.8; max-width:96ch; }
 #detail-stats { gap:15px 35px; margin-bottom:24px; }
 #detail-stats .stat .v { font-size:18px; }
 .table-scroll { overflow:auto; }
@@ -61,7 +67,7 @@ button:disabled { opacity:.35; cursor:default; }
 @media (max-width:560px) { .chart-scroll svg.chart { min-width:680px; } }
 table { white-space:nowrap; }
 footer { font-size:10px; line-height:1.8; }
-.method-note { font-size:11px; color:var(--ink-3); line-height:1.9; margin:20px 4px; }
+.method-note { font-size:11px; color:var(--ink-3); line-height:1.9; margin:20px 4px; max-width:96ch; }
 /* 首次打开的引导卡：只在一条记录都没有时出现。 */
 .first-run { border-left:3px solid var(--active); }
 .first-run h2 { font-size:22px; margin:0 0 10px; letter-spacing:-.04em; }
@@ -89,6 +95,7 @@ footer { font-size:10px; line-height:1.8; }
 
 /* 浅色系：--ink 全部压到接近 #2a-#35 的深度，保证在各自的 --surface 上对比够。 */
 :root[data-theme="warm"] { --page:#f5f1e9; --surface:#fffcf5; --ink:#352e27; --ink-2:#6e6458; --ink-3:#786d60; --border:#e5ded1; --hairline:#e9e2d8; --gridline:#e9e2d8; }
+:root[data-theme="moonpaper"] { --page:#f4f1ea; --surface:#fdfbf5; --ink:#2c2822; --ink-2:#645d51; --ink-3:#736b5e; --border:#e6e0d3; --hairline:#ece7dc; --gridline:#ece7dc; --baseline:#cfc7b6; --idle:#d8d1c2; }
 :root[data-theme="linen"] { --page:#f2f0ec; --surface:#fdfcfa; --ink:#2b2825; --ink-2:#63605a; --ink-3:#756f68; --border:#e3dfd8; --hairline:#eae6e0; --gridline:#eae6e0; --baseline:#cec9c1; --idle:#d6d1c9; }
 :root[data-theme="mist"] { --page:#eef1ee; --surface:#fbfdfb; --ink:#232a27; --ink-2:#5c6663; --ink-3:#68736f; --border:#dde4e0; --hairline:#e4eae6; --gridline:#e4eae6; --baseline:#c6d0cb; --idle:#ccd6d1; }
 :root[data-theme="sky"] { --page:#edf1f6; --surface:#fafcff; --ink:#1e2733; --ink-2:#556170; --ink-3:#68737f; --border:#dbe3ec; --hairline:#e3e9f1; --gridline:#e3e9f1; --baseline:#c3cddb; --idle:#ccd6e2; }
@@ -234,10 +241,10 @@ dialog .motion-setting { display:flex; align-items:center; gap:8px; }
    AI 原创插画随 HTML 内嵌，动态由 SVG/CSS 绘制，不加载远程素材。 */
 /* 上下两条带子用两套绿：顶部是偏冷偏灰的雾林，Hero 是偏暖偏黄的热带，
    两者不至于糊成一整片。 */
-:root { --decor-forest:#4a6b63; --decor-deep:#33534e; --decor-jungle:#2f6b3d; --decor-jungle-deep:#1d5330; --decor-rain:#3f7f9c; --decor-mist:#dfe9e4; --decor-spirit:#f7faf6; --decor-spirit-face:#33534e; --decor-storm:#3d566b; --decor-sun:#ffc247; --decor-core:#ffb01f; }
-:root[data-theme="warm"] { --decor-forest:#5d6a56; --decor-deep:#414f3c; --decor-jungle:#4f6c34; --decor-jungle-deep:#3a5527; --decor-rain:#5f838d; --decor-mist:#e6dcc7; --decor-spirit:#fffcf5; --decor-spirit-face:#414f3c; --decor-storm:#5a5d50; --decor-sun:#f5b44e; --decor-core:#e89b2a; }
+:root { --decor-forest:#4a6b63; --decor-deep:#33534e; --decor-jungle:#2f6b3d; --decor-jungle-deep:#1d5330; --decor-rain:#3f7f9c; --decor-mist:#dfe9e4; --decor-spirit:#f7faf6; --decor-spirit-face:#33534e; --decor-storm:#3d566b; --decor-sun:#ffc247; --decor-core:#ffb01f; --decor-star:#6d8f7f; --decor-star-today:#e8a33c; --decor-star-glow:#ffcf7d99; }
+:root[data-theme="warm"] { --decor-forest:#5d6a56; --decor-deep:#414f3c; --decor-jungle:#4f6c34; --decor-jungle-deep:#3a5527; --decor-rain:#5f838d; --decor-mist:#e6dcc7; --decor-spirit:#fffcf5; --decor-spirit-face:#414f3c; --decor-storm:#5a5d50; --decor-sun:#f5b44e; --decor-core:#e89b2a; --decor-star:#7d7f66; --decor-star-today:#d9902c; --decor-star-glow:#f3c47a99; }
 /* 深色主题下精灵不能跟着页面变黑，否则身体和凹洞又反了过来。 */
-:root[data-dark] { --decor-forest:#5d8f85; --decor-deep:#3a6c63; --decor-jungle:#4f9a5f; --decor-jungle-deep:#2f7043; --decor-rain:#8ec8e2; --decor-mist:#22343a; --decor-spirit:#cfe0da; --decor-spirit-face:#121b22; --decor-storm:#03070d; --decor-sun:#ffd070; --decor-core:#fff0c4; }
+:root[data-dark] { --decor-forest:#5d8f85; --decor-deep:#3a6c63; --decor-jungle:#4f9a5f; --decor-jungle-deep:#2f7043; --decor-rain:#8ec8e2; --decor-mist:#22343a; --decor-spirit:#cfe0da; --decor-spirit-face:#121b22; --decor-storm:#03070d; --decor-sun:#ffd070; --decor-core:#fff0c4; --decor-star:#bfe0d4; --decor-star-today:#ffd884; --decor-star-glow:#ffdf9ecc; }
 
 /* 顶栏 = 画卷，但按 hero 那张雨林的同一套办法处理：卡片底色是页面的 --surface，
    画面降透明度、并从上往下渐入。上半截几乎只剩卡片底色，所以文字、徽章、按钮
@@ -257,19 +264,27 @@ header { position:relative; z-index:2; margin:0 0 26px; padding:0; border:0; bor
 .spirits { opacity:calc(.9 * var(--decor-strength,1)); }
 .spirits .spirit-body { fill:var(--decor-spirit); stroke:var(--decor-spirit-face); stroke-width:1.1; vector-effect:non-scaling-stroke; }
 .spirits .spirit-face { fill:var(--decor-spirit-face); }
-.motes circle { fill:#e5edbd; opacity:calc(.6 * var(--decor-strength,1)); }
+/* 专注之星：过去的安静地亮着，今天的更大、更暖、带一点辉光。 */
+.focus-stars .star { fill:var(--decor-star); opacity:calc(.45 * var(--decor-strength,1)); }
+.focus-stars .star.today { fill:var(--decor-star-today); opacity:calc(.95 * var(--decor-strength,1));
+  filter:drop-shadow(0 0 5px var(--decor-star-glow)); }
 @media (prefers-reduced-motion:no-preference) {
   .kodama-head { transform-box:fill-box; transform-origin:50% 96%; animation:kodama-tilt 4s ease-in-out infinite alternate; }
-  .motes circle { animation:mote-drift 7s ease-in-out infinite alternate; }
+  .focus-stars .star { animation:star-breathe 6s ease-in-out infinite alternate; }
 }
 @keyframes kodama-tilt { from { transform:rotate(-11deg); } to { transform:rotate(11deg); } }
-@keyframes mote-drift { from { transform:translateY(5px); opacity:.14; } to { transform:translateY(-9px); opacity:.5; } }
+@keyframes star-breathe { from { opacity:.3; } to { opacity:.95; } }
 @keyframes forest-breath { from { transform:translate3d(-3%,0,0); opacity:.5; } to { transform:translate3d(4%,-4%,0); opacity:1; } }
 
 .rain-scene { --rain-travel:520px; --wind-tilt:1deg; --rain-slant:-5deg; position:absolute; z-index:0; top:0; bottom:0; left:50%; width:100vw; transform:translateX(-50%); pointer-events:none; overflow:hidden; }
 .rain-scene::after { content:''; position:absolute; inset:0; background:linear-gradient(90deg,var(--page),transparent 92%); opacity:.66; }
-.rainforest-backdrop { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; opacity:calc(.7 * var(--decor-strength,1)); -webkit-mask-image:linear-gradient(90deg,transparent 8%,#000 76%); mask-image:linear-gradient(90deg,transparent 8%,#000 76%); }
-:root[data-dark] .rainforest-backdrop { opacity:calc(.36 * var(--decor-strength,1)); filter:brightness(.65) saturate(.8); }
+/* 横向梯度而不是整片统一的白：左侧留白给标题，右侧把那棵大树真正放出来。
+   白膜比例 = 1 − opacity × 遮罩 alpha，从左到右约 82% → 60% → 25%。 */
+.rainforest-backdrop { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center;
+  opacity:calc(.75 * var(--decor-strength,1));
+  --wash:linear-gradient(90deg,#0000003d 0%,#00000047 20%,#00000087 52%,#000000cc 76%,#000 94%);
+  -webkit-mask-image:var(--wash); mask-image:var(--wash); }
+:root[data-dark] .rainforest-backdrop { opacity:calc(.46 * var(--decor-strength,1)); filter:brightness(.62) saturate(.8); }
 .hero>*:not(.rain-scene) { position:relative; z-index:1; }
 .rain-foliage { position:absolute; inset:0; width:100%; height:100%; }
 .foliage-back { fill:var(--decor-jungle); opacity:calc(.07 * var(--decor-strength,1)); }
@@ -287,16 +302,31 @@ header { position:relative; z-index:2; margin:0 0 26px; padding:0; border:0; bor
 .rain-far { opacity:calc(.42 * var(--rain-far,.3) * var(--decor-strength,1)); }
 .rain-mid { opacity:calc(.72 * var(--rain-mid,0) * var(--decor-strength,1)); }
 .rain-near { opacity:calc(1 * var(--rain-near,0) * var(--decor-strength,1)); }
+/* 雨墙：又长又密又快，只在骤雨/暴雨时浮现。比前三层更实、更斜。 */
+.rain-squall { opacity:calc(.95 * var(--squall,0) * var(--decor-strength,1)); }
+.rain-squall span { width:2.6px; border-radius:0;
+  background:linear-gradient(to bottom,transparent,var(--decor-rain) 45%,var(--decor-rain)); }
+.rain-near span { background:linear-gradient(to bottom,transparent,var(--decor-rain)); }
 .rain-near span { width:2.4px; }
 .rain-splashes { position:absolute; inset:auto 0 6px; height:44px; opacity:calc((var(--rain-mid,0) * .65 + var(--drip,.2) * .25) * var(--decor-strength,1)); }
 .rain-splashes span { position:absolute; bottom:0; width:16px; height:5px; margin-left:-8px; border:1px solid var(--decor-rain); border-radius:50%; opacity:0; animation:ripple ease-out infinite; }
-.storm-veil { position:absolute; inset:0; background:linear-gradient(to bottom,var(--decor-storm),transparent 82%); opacity:calc(.28 * var(--cloud,0) * var(--decor-strength,1)); }
+/* 骤雨的戏全做在右半边：文字在左侧，那里必须保持浅色可读；
+   右侧没有文字，可以真的压暗、真的下成雨帘。横向权重和图片的渐变对齐。 */
+.storm-veil { position:absolute; inset:0;
+  /* 暗部压在中下部，不压顶部那一行（品牌名和按钮在那儿）。 */
+  background:linear-gradient(to bottom,transparent 0,var(--decor-storm) 42%,var(--decor-storm) 100%);
+  opacity:calc(.5 * var(--cloud,0) * var(--decor-strength,1));
+  --side:linear-gradient(90deg,transparent 4%,#00000038 34%,#000000b8 62%,#000 84%);
+  -webkit-mask-image:var(--side); mask-image:var(--side); }
 /* Canopy-filtered light: no cartoon sun, no flashing lightning. */
 .sun-wash { position:absolute; inset:0; background:linear-gradient(215deg,var(--decor-sun),transparent 58%); opacity:calc(.34 * var(--sun,0) * var(--decor-strength,1)); }
 .sun-shafts { position:absolute; inset:-35% 0 -40%; opacity:calc(var(--sun,0) * var(--decor-strength,1)); transform:rotate(24deg); }
 .sun-shafts span { position:absolute; top:0; height:100%; background:linear-gradient(180deg,#fff2bda1,transparent); filter:blur(6px); animation:shaft-breathe 10s ease-in-out infinite alternate; }
 .rain-clouds { position:absolute; inset:-35% -20% 40%; background:radial-gradient(ellipse at 65% 25%,var(--decor-storm),transparent 62%); opacity:calc(var(--cloud,.2) * .3 * var(--decor-strength,1)); animation:cloud-travel 26s ease-in-out infinite alternate; }
-.rain-curtain { position:absolute; inset:0; background:repeating-linear-gradient(103deg,transparent 0 9px,#acd2dc20 10px,transparent 11px 19px); opacity:calc(var(--storm,0) * .44 * var(--decor-strength,1)); }
+.rain-curtain { position:absolute; inset:0; background:repeating-linear-gradient(103deg,transparent 0 8px,#9cc6d340 9px,transparent 10px 17px);
+  opacity:calc(var(--storm,0) * .95 * var(--decor-strength,1));
+  --side:linear-gradient(90deg,transparent 6%,#00000047 36%,#000000cc 64%,#000 86%);
+  -webkit-mask-image:var(--side); mask-image:var(--side); }
 .wet-ground { position:absolute; inset:72% 0 0; background:linear-gradient(0deg,var(--decor-mist),transparent); opacity:calc(var(--wet,.5) * .5 * var(--decor-strength,1)); }
 .canopy-drips { position:absolute; inset:0; opacity:calc(var(--drip,.2) * .6 * var(--decor-strength,1)); }
 .canopy-drips span { position:absolute; width:2px; height:5px; background:var(--decor-rain); border-radius:50%; animation:canopy-drip 4s ease-in infinite; }
@@ -328,9 +358,111 @@ header { position:relative; z-index:2; margin:0 0 26px; padding:0; border:0; bor
 /* GitHub 头像：hero 底部的署名，图片是内嵌 data URI，点击才会去 github.com。 */
 .hero-foot { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-top:20px; }
 .hero-foot .hero-meta { margin:0!important; }
+/* 这行小字现在压在渐变的中段（约 28% 图），--ink-3 只有 3.5 对比度，提一档到 --ink-2。 */
+.hero .hero-meta { color:var(--ink-2); }
 .author-chip { display:inline-flex; align-items:center; gap:10px; padding:6px 14px 6px 6px; border-radius:999px; text-decoration:none; color:var(--ink); background:color-mix(in srgb,var(--surface) 82%,transparent); border:1px solid var(--border); }
 .author-chip:hover { background:var(--surface); border-color:var(--active); }
 .author-chip img { width:34px; height:34px; border-radius:50%; display:block; }
 .author-chip strong { display:block; font-size:12px; font-weight:600; letter-spacing:-.01em; }
 .author-chip small { display:block; font-size:10px; color:var(--ink-3); letter-spacing:.08em; }
 @media (max-width:560px) { header { padding:18px 0 16px; } .hero-foot { gap:12px; } }
+
+/* ---------- 版面：整页 ----------
+   把所有模块拼成一张连续的纸：页面底色就是卡片底色，模块之间不留缝、不投影、
+   不加圆角，只用发丝线分隔。内容、配色、功能都不动，变的只是"分块浮起"还是"连成一片"。 */
+:root[data-layout="sheet"] body { background:var(--surface); padding:0 0 40px; }
+:root[data-layout="sheet"] .wrap { max-width:clamp(1120px,96vw,2320px); }
+:root[data-layout="sheet"] .hero,
+:root[data-layout="sheet"] .music-card,
+:root[data-layout="sheet"] .card,
+:root[data-layout="sheet"] .tile { margin:0; border-radius:0; box-shadow:none; background:transparent; }
+/* 分隔改用发丝线；每个横向区块之间一条。 */
+:root[data-layout="sheet"] .hero,
+:root[data-layout="sheet"] .music-card,
+:root[data-layout="sheet"] .kpi-row,
+:root[data-layout="sheet"] .insight-grid,
+:root[data-layout="sheet"] .chart-pair,
+:root[data-layout="sheet"] .manual-card { border-bottom:1px solid var(--hairline); margin-bottom:0; }
+/* 并排的模块之间用竖线，不用缝隙。 */
+:root[data-layout="sheet"] .kpi-row,
+:root[data-layout="sheet"] .insight-grid,
+:root[data-layout="sheet"] .chart-pair { gap:0; }
+/* 实线太抢眼：整页模式下分隔线改成两端淡出的渐变，颜色也压到发丝线的四成。
+   分隔只需要"暗示"，不需要"画出来"。 */
+:root[data-layout="sheet"] .hero,
+:root[data-layout="sheet"] .music-card,
+:root[data-layout="sheet"] .kpi-row,
+:root[data-layout="sheet"] .insight-grid,
+:root[data-layout="sheet"] .chart-pair,
+:root[data-layout="sheet"] .manual-card { position:relative; border-bottom:0; }
+:root[data-layout="sheet"] .music-card::after,
+:root[data-layout="sheet"] .kpi-row::after,
+:root[data-layout="sheet"] .insight-grid::after,
+:root[data-layout="sheet"] .chart-pair::after,
+:root[data-layout="sheet"] .manual-card::after { content:''; position:absolute; z-index:3; left:34px; right:34px; bottom:0; height:1px;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--hairline) 62%,transparent) 12%,
+    color-mix(in srgb,var(--hairline) 62%,transparent) 88%,transparent); }
+:root[data-layout="sheet"] .kpi-row > .tile + .tile,
+:root[data-layout="sheet"] .insight-grid > .card + .card,
+:root[data-layout="sheet"] .chart-pair > .card + .card { position:relative; border-left:0; }
+:root[data-layout="sheet"] .kpi-row > .tile + .tile::before,
+:root[data-layout="sheet"] .insight-grid > .card + .card::before,
+:root[data-layout="sheet"] .chart-pair > .card + .card::before { content:''; position:absolute; z-index:3; left:0; top:18%; bottom:18%; width:1px;
+  background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--hairline) 58%,transparent) 20%,
+    color-mix(in srgb,var(--hairline) 58%,transparent) 80%,transparent); }
+/* 深色的目标卡在整页里就是一块深色区，保留它，只是不再浮起。 */
+:root[data-layout="sheet"] .focus-card { background:var(--focus-bg); }
+/* hero 的画通到两边，不再是一张卡。 */
+:root[data-layout="sheet"] .hero { padding-left:34px; padding-right:34px; }
+:root[data-layout="sheet"] .music-card,
+:root[data-layout="sheet"] .card,
+:root[data-layout="sheet"] .tile { padding:26px 34px; }
+:root[data-layout="sheet"] .method-note,
+:root[data-layout="sheet"] footer { padding-left:34px; padding-right:34px; }
+@media (max-width:560px) {
+  :root[data-layout="sheet"] .hero,
+  :root[data-layout="sheet"] .music-card,
+  :root[data-layout="sheet"] .card,
+  :root[data-layout="sheet"] .tile,
+  :root[data-layout="sheet"] .method-note,
+  :root[data-layout="sheet"] footer { padding-left:18px; padding-right:18px; }
+}
+
+/* 整页版面里三张时间卡不再是独立卡片，水位在分栏线处会硬切；两端淡一点收口。 */
+:root[data-layout="sheet"] .tile-wave { --edge:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%);
+  -webkit-mask-image:var(--edge); mask-image:var(--edge); }
+
+/* 彩虹：雨停、太阳出来、空气还湿的那几秒。很淡、很宽、两端化开。 */
+.rainbow { position:absolute; inset:0; width:100%; height:100%; pointer-events:none;
+  opacity:calc(.62 * var(--rainbow,0) * var(--decor-strength,1)); filter:blur(2.5px); }
+.bow-band { fill:none; stroke-width:13; stroke-linecap:round; opacity:.5; }
+@media (prefers-reduced-motion:no-preference) { .rainbow { transition:opacity 1.6s ease; } }
+
+/* 三只神灵：只在各自的天气里淡入。剪影用木灵那套颜色，保持同一个世界。 */
+.beast { fill:var(--decor-spirit); stroke:var(--decor-spirit-face); stroke-width:1.1; vector-effect:non-scaling-stroke; }
+.beast-deer { opacity:calc(.9 * var(--deer,0) * var(--decor-strength,1)); }
+.beast-wolf { opacity:calc(.9 * var(--wolf,0) * var(--decor-strength,1)); }
+.beast-night { opacity:calc(.5 * var(--night,0) * var(--decor-strength,1)); }
+@media (prefers-reduced-motion:no-preference) { .beast { transition:opacity 2.2s ease; } }
+
+/* 顶栏成了身份区：品牌名、GitHub 署名、日期排一行。
+   标题让位——继续加粗，但字号收到小银河之下，主次对调。 */
+header .brand h1 { font-size:27px; letter-spacing:-.045em; }
+header .author-chip { margin-left:6px; padding:4px 12px 4px 4px; }
+header .author-chip img { width:28px; height:28px; }
+header .hero-meta { margin:0!important; font-size:11.5px!important; color:var(--ink-2); white-space:nowrap; }
+header .brand { flex:none; }
+.hero h2 { font-size:clamp(17px,1.45vw,21px); line-height:1.5; letter-spacing:-.02em; font-weight:700; }
+.hero .eyebrow { margin-bottom:10px; }
+.hero p#hero-signature { font-size:13px; margin-top:8px; }
+@media (max-width:900px) { header .hero-meta { display:none; } }
+@media (max-width:560px) {
+  header .brand h1 { font-size:21px; }
+  header .author-chip { margin-left:0; }
+  .hero h2 { font-size:17px; }
+}
+
+/* 标题缩小、署名搬走之后 hero 只剩 266px 高，宽屏上看像缩了水。
+   宽度没变，是高度塌了——给它一个下限，把画面的呼吸空间还回去。 */
+.hero { min-height:clamp(300px,23vw,372px); justify-content:flex-start; }
+@media (max-width:560px) { .hero { min-height:248px; } }

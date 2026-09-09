@@ -28,24 +28,164 @@ function kodama(scale, wobble) {
 function buildSpiritLayer() {
   const W = 1440, H = 480;
   const band = el('svg', { id: 'forest-band', viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'xMidYMax slice', 'aria-hidden': 'true' });
-  const spirits = el('g', { class: 'spirits' });
-  // 蹲在画面下缘的林床上，靠两侧站；中间那片留给标题。
-  [[96, 430, .92], [214, 446, 1.15], [368, 436, .82], [1058, 440, .86], [1208, 448, 1.1], [1348, 433, .95]].forEach(([x, y, s]) => {
-    const seat = el('g', { transform: 'translate(' + x + ' ' + y + ')' });
-    seat.appendChild(kodama(s, 3.4 + decorRand() * 3.2));
-    spirits.appendChild(seat);
-  });
-  band.appendChild(spirits);
-  const motes = el('g', { class: 'motes' });
-  for (let i = 0; i < 30; i++) {
-    const mote = el('circle', { cx: (decorRand() * W).toFixed(1), cy: (150 + decorRand() * 310).toFixed(1), r: (0.7 + decorRand() * 1.5).toFixed(2) });
-    mote.style.animationDuration = (5 + decorRand() * 7).toFixed(2) + 's';
-    mote.style.animationDelay = '-' + (decorRand() * 9).toFixed(2) + 's';
-    motes.appendChild(mote);
-  }
-  band.appendChild(motes);
+  band.appendChild(el('g', { class: 'spirits' }));
+  band.appendChild(el('g', { class: 'focus-stars' }));
   return band;
 }
+
+/* 名字叫小银河，那就让"光"真的来自数据：每一段 ≥25 分钟的持续专注 = 一颗星，
+   今天的更大更亮。星位固定（同一套种子），数据变化时只增减，不会整片跳动。 */
+const STAR_SEATS = (() => {
+  const seat = mulberry32(521974), seats = [];
+  while (seats.length < 140) {
+    const y = 132 + seat() * 288;
+    if (y > 424) continue;                      // 再往下就撞到木灵了
+    seats.push([seat() * 1440, y, 3.5 + seat() * 6, 4 + seat() * 7, seat() * 9]);
+  }
+  return seats;
+})();
+/* 避让区不能写死：wrap 是流式的，文字块的位置随视口宽度变。
+   必须逐个元素分别判定——把它们并成一个大矩形的话，几个分散的文字块会把
+   整块画面都圈进去（1440 下并集是 x86–1354），装饰就一个都放不下了。 */
+const TEXT_NODES = ['#hero-title', '#hero-signature', '.author-chip', '.hero-meta', 'header .brand', '.header-actions'];
+/* 块级元素的矩形横跨整行，哪怕文字只有半行；用 Range 取真实的文字包围盒，
+   否则一个 <p> 就能把整条画面圈成禁区。 */
+function tightRect(node) {
+  try {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const r = range.getBoundingClientRect();
+    if (r.width && r.height) return r;
+  } catch {}
+  return node.getBoundingClientRect();
+}
+function textBoxesInViewBox(band) {
+  const box = band.getBoundingClientRect();
+  if (!box.width || !box.height) return [];
+  const scale = Math.max(box.width / 1440, box.height / 480);   // preserveAspectRatio=slice
+  const originX = (1440 - box.width / scale) / 2;               // xMid
+  const originY = 480 - box.height / scale;                     // YMax：底对齐
+  const boxes = [];
+  for (const selector of TEXT_NODES) {
+    const node = document.querySelector(selector);
+    if (!node) continue;
+    const r = tightRect(node);
+    if (!r.width || !r.height) continue;
+    boxes.push({
+      x0: originX + (r.left - box.left) / scale, x1: originX + (r.right - box.left) / scale,
+      y0: originY + (r.top - box.top) / scale, y1: originY + (r.bottom - box.top) / scale,
+    });
+  }
+  return boxes;
+}
+const hits = (boxes, x0, x1, y0, y1) =>
+  boxes.some(b => x1 > b.x0 - 6 && x0 < b.x1 + 6 && y1 > b.y0 - 5 && y0 < b.y1 + 5);
+
+const SUSTAINED_SECONDS = 25 * 60;
+function starPath(r) {
+  const waist = r * 0.2;
+  return `M0,${-r} L${waist},${-waist} L${r},0 L${waist},${waist} L0,${r} L${-waist},${waist} L${-r},0 L${-waist},${-waist}Z`;
+}
+const SPIRIT_SEATS = [[96, 430, .92], [214, 446, 1.15], [368, 436, .82], [520, 440, .78],
+  [700, 448, .9], [880, 434, .84], [1058, 440, .86], [1208, 448, 1.1], [1348, 433, .95]];
+
+/* ---------- 三只神灵：按天气现身 ----------
+   都是现画的剪影，和木灵一套做法，不含任何影片素材。
+   出太阳→鹿（山兽神），大雾→白狼，暴雨→夜行的巨神。 */
+function forestDeer() {
+  // 实心剪影：腿、角都用有宽度的填充块，和身体一个重量，别一半实一半线。
+  const g = el('g', { class: 'beast beast-deer' });
+  [[-19, 2.6], [-10, 1.2], [12, -1.2], [21, -2.6]].forEach(([x, lean]) =>
+    g.appendChild(el('path', { d: `M${x - 2.4},-6 L${x + 2.4},-6 L${x + lean + 2},33 L${x + lean - 2},33 Z` })));
+  g.appendChild(el('ellipse', { cx: 0, cy: -17, rx: 27, ry: 13.5 }));
+  g.appendChild(el('path', { d: 'M17,-24 L26,-52 L36,-49 L27,-19 Z' }));
+  g.appendChild(el('ellipse', { cx: 38, cy: -55, rx: 10.5, ry: 6, transform: 'rotate(-20 38 -55)' }));
+  g.appendChild(el('path', { d: 'M46,-59 L56,-58 L47,-52 Z' }));
+  g.appendChild(el('path', { d: 'M-25,-20 C-39,-27 -43,-14 -33,-8 L-29,-14 C-34,-17 -32,-22 -25,-18 Z' }));
+  [[31, -1], [40, 1]].forEach(([base, dir]) => {
+    g.appendChild(el('path', { d: `M${base - 2.6},-60 L${base + 2.6},-60 L${base + dir * 11 + 2},-95 L${base + dir * 11 - 2.4},-95 Z` }));
+    [[-70, 13, 2.2], [-83, 15, 1.9]].forEach(([y, reach, thick]) =>
+      g.appendChild(el('path', {
+        d: `M${base + dir * 2},${y} L${base + dir * 2 + dir * reach},${y - 9} L${base + dir * 2 + dir * reach},${y - 9 + thick * 2} L${base + dir * 2},${y + thick * 2} Z` })));
+  });
+  return g;
+}
+function whiteWolf() {
+  const g = el('g', { class: 'beast beast-wolf' });
+  [[-16, 1.8], [-8, .8], [9, -.8], [17, -1.8]].forEach(([x, lean]) =>
+    g.appendChild(el('path', { d: `M${x - 2.2},-6 L${x + 2.2},-6 L${x + lean + 1.9},21 L${x + lean - 1.9},21 Z` })));
+  g.appendChild(el('ellipse', { cx: 0, cy: -14, rx: 24, ry: 10 }));
+  g.appendChild(el('path', { d: 'M15,-18 L27,-31 L37,-26 L23,-13 Z' }));
+  g.appendChild(el('path', { d: 'M27,-33 L48,-30 L45,-20 L26,-23 Z' }));
+  g.appendChild(el('path', { d: 'M28,-34 L30,-44 L37,-33 Z' }));
+  g.appendChild(el('path', { d: 'M31,-45 L33,-53 L39,-42 Z' }));
+  g.appendChild(el('path', { d: 'M-22,-17 C-38,-24 -45,-10 -33,-3 L-29,-9 C-36,-13 -32,-20 -22,-14 Z' }));
+  return g;
+}
+function nightSpirit() {
+  const g = el('g', { class: 'beast beast-night' });
+  g.appendChild(el('path', { d: 'M-14,0 C-10,-54 -8,-106 -5,-152 L5,-152 C8,-106 10,-54 14,0 Z' }));
+  g.appendChild(el('ellipse', { cx: 0, cy: -162, rx: 12, ry: 14 }));
+  [-1, 1].forEach(side => g.appendChild(el('path', {
+    d: `M${side * 8},-140 C${side * 27},-121 ${side * 31},-87 ${side * 21},-55 L${side * 15},-58 C${side * 24},-86 ${side * 20},-117 ${side * 5},-134 Z` })));
+  return g;
+}
+/* 每只给几个备选位置：主位被文字挡住就往旁边挪，而不是干脆不出现。 */
+const BEASTS = [
+  { make: forestDeer, seats: [[1146, 452], [986, 452], [1292, 450]], scale: 1.05, half: [58, 100] },
+  { make: whiteWolf, seats: [[1010, 456], [330, 458], [660, 456]], scale: .95, half: [50, 56] },
+  { make: nightSpirit, seats: [[742, 462], [590, 462], [900, 462]], scale: .8, half: [34, 180] },
+];
+
+window.renderSpirits = function () {
+  const group = document.querySelector('#forest-band .spirits');
+  if (!group) return;
+  group.replaceChildren();
+  const boxes = textBoxesInViewBox(group.ownerSVGElement);
+  // 木灵大致向上占 24 个单位、左右各 11 个（都乘缩放）。
+  const clear = ([x, y, scale]) => !hits(boxes, x - 11 * scale, x + 11 * scale, y - 24 * scale, y);
+  SPIRIT_SEATS.filter(clear).slice(0, 7).forEach(([x, y, scale], index) => {
+    const seat = el('g', { transform: 'translate(' + x + ' ' + y + ')' });
+    seat.appendChild(kodama(scale, 3.4 + ((index * 37) % 32) / 10));
+    group.appendChild(seat);
+  });
+  // 神灵和木灵共用同一套避让：它们体型大，压到标题上会很难看。
+  BEASTS.forEach(({ make, seats, scale, half: [halfW, halfH] }) => {
+    const spot = seats.find(([x, y]) =>
+      !hits(boxes, x - halfW * scale, x + halfW * scale, y - halfH * scale, y));
+    if (!spot) return;
+    const seat = el('g', { transform: `translate(${spot[0]} ${spot[1]}) scale(${scale})` });
+    seat.appendChild(make());
+    group.appendChild(seat);
+  });
+};
+window.renderFocusStars = function () {
+  const group = document.querySelector('#forest-band .focus-stars');
+  if (!group) return;
+  group.replaceChildren();
+  let todays = 0, earlier = 0;
+  DATA.days.forEach(day => day.segments.forEach(segment => {
+    if (segment.kind !== 'active' || segment.end_sec - segment.start_sec < SUSTAINED_SECONDS) return;
+    if (day === TODAY) todays++; else earlier++;
+  }));
+  // 今天的排在前面，用最显眼的几个星位。
+  const boxes = textBoxesInViewBox(group.ownerSVGElement);
+  const clear = ([x, y, radius]) => !hits(boxes, x - radius, x + radius, y - radius, y + radius);
+  const usable = STAR_SEATS.filter(clear);
+  const total = Math.min(todays + earlier, usable.length);
+  for (let i = 0; i < total; i++) {
+    const [x, y, radius, spin, delay] = usable[i];
+    const fresh = i < todays;
+    const star = el('path', {
+      d: starPath(fresh ? radius * 1.45 : radius),
+      class: fresh ? 'star today' : 'star',
+      transform: `translate(${x.toFixed(1)} ${y.toFixed(1)})`,
+    });
+    star.style.animationDuration = spin.toFixed(2) + 's';
+    star.style.animationDelay = '-' + delay.toFixed(2) + 's';
+    group.appendChild(star);
+  }
+};
 
 /* ---------- Hero：东南亚雨林 + 降雨 ---------- */
 function leafBlade(len, width) {
@@ -180,7 +320,11 @@ function buildRainforest() {
     scene.appendChild(mist);
   }
   // 三层雨：越近的越快、越长、越明显，靠差速拉开纵深。
-  [[46, 'rain-far', 1.2, 9], [38, 'rain-mid', .72, 21], [26, 'rain-near', .44, 38]].forEach(([count, cls, speed, length]) => {
+  // 前三层是常态的雨；第四层 rain-squall 只在雨量接近满格时才浮现——
+  // 190 条又长又快的雨丝，这才是"雨下得很大"看起来的样子。数量固定、常驻，
+  // 靠透明度浮现，所以不会在骤雨来时重排 DOM 或重启动画。
+  [[46, 'rain-far', 1.2, 9], [38, 'rain-mid', .72, 21], [26, 'rain-near', .44, 38],
+   [190, 'rain-squall', .3, 74]].forEach(([count, cls, speed, length]) => {
     const layer = document.createElement('div');
     layer.className = 'rain-layer ' + cls;
     for (let i = 0; i < count; i++) {
@@ -220,6 +364,27 @@ function buildRainforest() {
   veil.className = 'storm-veil';
   const wash = document.createElement('div');
   wash.className = 'sun-wash';
+  const bow = el('svg', { class: 'rainbow', viewBox: '0 0 1440 480', preserveAspectRatio: 'xMidYMax slice', 'aria-hidden': 'true' });
+  const bowDefs = el('defs', {});
+  const bowFade = el('linearGradient', { id: 'bow-fade', x1: '0', y1: '0', x2: '1', y2: '0' });
+  [['0%', 0], ['16%', .85], ['50%', 1], ['84%', .85], ['100%', 0]].forEach(([offset, alpha]) => {
+    bowFade.appendChild(el('stop', { offset, 'stop-color': '#fff', 'stop-opacity': alpha }));
+  });
+  const bowMask = el('mask', { id: 'bow-mask' });
+  bowMask.appendChild(el('rect', { x: 0, y: 0, width: 1440, height: 480, fill: 'url(#bow-fade)' }));
+  bowDefs.append(bowFade, bowMask);
+  bow.appendChild(bowDefs);
+  const arcs = el('g', { mask: 'url(#bow-mask)' });
+  // 由外到内：红橙黄绿青蓝紫。半径逐圈收小，描边很宽、很淡，靠 blur 化开。
+  ['#e0685f', '#e59a52', '#e3c75c', '#7fbf72', '#5fa9c4', '#6b7fc4', '#9a72bd'].forEach((colour, index) => {
+    arcs.appendChild(el('path', {
+      d: 'M120,470 A 600,600 0 0 1 1320,470'.replace(/600,600/, `${600 - index * 15},${600 - index * 15}`)
+         .replace('M120,470', `M${120 + index * 15},470`).replace('1320,470', `${1320 - index * 15},470`),
+      class: 'bow-band', stroke: colour,
+    }));
+  });
+  bow.appendChild(arcs);
+  scene.appendChild(bow);
   const shafts = document.createElement('div');shafts.className = 'sun-shafts';
   for(let i=0;i<5;i++) {
     const ray=document.createElement('span');ray.style.left=(56+i*8)+'%';
@@ -229,6 +394,9 @@ function buildRainforest() {
   const hero=document.querySelector('.hero');hero.prepend(scene);
   // 品牌名、状态徽章和按钮搬进画板，和标题共用同一张画：整页只剩一个画面。
   scene.after(header);
+  window.renderSpirits?.();
+  window.renderFocusStars?.();
+  new ResizeObserver(()=>{window.renderSpirits?.();window.renderFocusStars?.();}).observe(document.querySelector('.hero'));
   const travel=new ResizeObserver(()=>scene.style.setProperty('--rain-travel',Math.ceil(scene.clientHeight*1.4)+'px'));
   travel.observe(scene);
   return scene;
@@ -241,17 +409,27 @@ function buildRainforest() {
 const WEATHER_FIELDS=['rain','sun','cloud','mist','wind','wet','drip'];
 const WEATHER_KEYFRAMES = [
   // phase, rain, sun, cloud, mist, wind, wet surface, canopy drip
+  //
+  // 一天里有两场雨，而且是两种雨：
+  //   .20–.50  午后对流阵雨——云先堆 12% 周期，看得见它要来；
+  //   .76–.90  骤雨（squall）——晴空底下毫无征兆，一阵疾风先到，
+  //            两三秒内雨墙就砸下来，收得同样快。东南亚那种。
   [0,    0, .12, .26, .82, .10, .60, .16],
-  [.12,  0, .70, .18, .30, .16, .36, .08],
-  [.24,  0, .24, .82, .22, .55, .28, .02],
-  [.30,.35, .02, .95, .32, .86, .62, .32],
-  [.36,  1,   0,    1,.52,  1,   1, .85],
-  [.45,.92,   0, .96, .60, .85,  1,   1],
-  [.56,.34, .03, .75, .78, .40,  1,   1],
-  [.64,  0, .16, .54,   1, .18, .94, .86],
-  [.74,  0, .74, .24, .72, .12, .82, .64],
-  [.86,  0,   1, .12, .32, .14, .56, .30],
-  [.94,  0, .34, .18, .52, .12, .48, .12],
+  [.10,  0, .70, .18, .30, .16, .36, .08],
+  [.20,  0, .24, .82, .22, .55, .28, .02],
+  [.26,.35, .02, .95, .32, .86, .62, .32],
+  [.32,  1,   0,    1, .52,  1,   1, .85],
+  [.40,.92,   0, .96, .60, .85,  1,   1],
+  [.50,.34, .03, .75, .78, .40,  1,   1],
+  [.58,  0, .16, .54,   1, .18, .94, .86],
+  [.68,  0, .78, .20, .66, .12, .80, .58],
+  [.76,  0, .96, .08, .24, .09, .54, .26],   // 完全放晴，一片云都没有
+  [.785, 0, .90, .30, .20, .92, .50, .20],   // 一阵疾风先到，天还是亮的
+  [.805, 1, .16, .88, .28,  1,  .74, .50],   // 雨墙落下：约 2 秒
+  [.85,  1,   0,    1, .40,  1,   1,   1],   // 最猛
+  [.88, .70,   0, .92, .52, .78,  1,   1],
+  [.905,.06, .38, .48, .74, .28,  1,  .92],  // 收得和来时一样快
+  [.95,  0, .58, .22, .66, .12, .80, .50],
   [1,    0, .12, .26, .82, .10, .60, .16]
 ];
 function weatherAt(phase) {
@@ -282,7 +460,17 @@ function paintWeather(climate) {
     style.setProperty('--rain-' + name, Math.max(0, Math.min(1, (rain - from) / (to - from))).toFixed(3));
   });
   style.setProperty('--storm', (rain * rain).toFixed(3));
+  const wall = Math.max(0, Math.min(1, (rain - .55) / .38));
+  style.setProperty('--squall', (wall * wall * (3 - 2 * wall)).toFixed(3));
   style.setProperty('--sun', sun.toFixed(3));
+  // 彩虹不是独立天气，而是三件事同时成立：太阳出来、雨停了、空气还是湿的。
+  const bow = sun * climate.wet * Math.max(0, 1 - rain * 3.2);
+  style.setProperty('--rainbow', Math.min(1, bow * 1.9).toFixed(3));
+  // 谁在什么天气现身：太阳→鹿，大雾→白狼，暴雨→夜行的巨神。
+  const band = (value, from, to) => Math.max(0, Math.min(1, (value - from) / (to - from)));
+  style.setProperty('--deer', band(sun, .55, .92).toFixed(3));
+  style.setProperty('--wolf', (band(climate.mist, .72, .98) * (1 - Math.min(1, rain * 2))).toFixed(3));
+  style.setProperty('--night', band(rain, .82, 1).toFixed(3));
   for(const field of ['cloud','mist','wet','drip']) style.setProperty('--'+field,climate[field].toFixed(3));
   const gust=.7+.3*Math.sin(performance.now()/2100)+.1*Math.sin(performance.now()/770);
   style.setProperty('--wind-tilt',(wind*gust*4).toFixed(2)+'deg');
