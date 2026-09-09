@@ -190,6 +190,12 @@ def render_html(data: dict) -> str:
     scripts = "".join("<script>" + (assets / name).read_text(encoding="utf-8") + "</script>"
                       for name in ("dashboard-enhancements.js", "dashboard-decor.js",
                                    "dashboard-personalization.js", "dashboard-scenes.js"))
+    for token, filename in (('__FOREST_ART__','forest-sanctuary.webp'), ('__RAINFOREST_ART__','rainforest.webp')):
+        try:
+            source = 'data:image/webp;base64,' + base64.b64encode((assets / 'art' / filename).read_bytes()).decode('ascii')
+        except OSError:
+            source = ''  # The vector layer still works in a minimal install.
+        scripts = scripts.replace(token, source)
     return html.replace("</body>", scripts + "</body>")
 
 
@@ -925,7 +931,8 @@ function renderDetail(day) {
 
 function selectDay(date) {
   selectedDate = date;
-  history.replaceState(null, "", "#" + date);
+  // A bookmarked/open "today" must follow the calendar, not yesterday's ISO date.
+  history.replaceState(null, "", "#" + (date === TODAY.date ? "today" : date));
   renderBarChart();
   renderDetail(DATA.days.find(d => d.date === date));
 }

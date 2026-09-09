@@ -140,7 +140,7 @@ document.body.insertAdjacentHTML('beforeend', `
   </div><div class="settings-grid">
     <label>目标卡配色<select id="setting-focusStyle"></select></label>
     <label>自定义强调色<span class="color-row"><input id="setting-accentCustom" type="color"><button type="button" id="clear-accent">用预设</button></span></label>
-    <label>天气<select id="setting-weatherMode"><option value="cycle">循环：小雨→暴雨→放晴</option><option value="drizzle">一直小雨</option><option value="storm">一直暴雨</option><option value="clear">一直晴天</option></select></label>
+    <label>天气<select id="setting-weatherMode"><option value="cycle">雨林循环：晨雾 → 积云 → 骤雨 → 雨后透光</option><option value="drizzle">林间细雨</option><option value="storm">热带骤雨</option><option value="clear">雨后晴光</option></select></label>
     <label>一轮天气时长 <span id="weather-cycle-value"></span><input id="setting-weatherCycle" type="range" min="20" max="600" step="4"></label>
   </div>
     <label>装饰画浓度 <span id="decor-strength-value"></span><input id="setting-decorStrength" type="range" min="0" max="150" step="5"></label>
@@ -220,7 +220,7 @@ function applyAppearance() {
   cards[0].hidden=!preferences.showGoal; cards[1].hidden=!preferences.showRhythm;
   document.querySelector('.insight-grid').classList.toggle('single-card',preferences.showGoal!==preferences.showRhythm);
   detailCard.hidden=!preferences.showTimeline;
-  window.applyDecorSettings?.(preferences.showDecor);
+  window.applyDecorSettings?.(preferences.showDecor && preferences.decorStrength>0);
   window.applyWeatherSettings?.(preferences.weatherMode,preferences.weatherCycle);
   window.applySceneSettings?.();
   fitHeadline();
@@ -481,12 +481,14 @@ document.getElementById('music-volume').oninput=event=>{
   if(youtubeReady) youtubePlayer.setVolume(preferences.volume);savePreferences();
 };
 document.getElementById('music-loop').onchange=event=>{preferences.loop=event.target.checked;audioPlayer.loop=preferences.loop;savePreferences();};
-let refreshing=false;
+let refreshing=false, lastRefreshAttempt=0;
+function calendarDate() {const now=new Date();return [now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');}
+let observedCalendarDate=calendarDate();
 async function refreshDashboard() {
   if(refreshing) return;
   const button=document.getElementById('refresh-data');
   if(location.protocol==='file:') {button.textContent='请双击桌面图标更新';return;}
-  refreshing=true;button.disabled=true;
+  refreshing=true;button.disabled=true;lastRefreshAttempt=performance.now();
   try {
     const response=await fetch('/data',{cache:'no-store',signal:AbortSignal.timeout(5000)});
     if(!response.ok) throw Error('refresh');
@@ -499,12 +501,25 @@ async function refreshDashboard() {
     selectDay(!followedToday && DATA.days.some(d=>d.date===selectedDate)?selectedDate:TODAY.date);
     document.getElementById('hero-date').textContent=TODAY.date+' · '+TODAY.weekday+'  /  你的私人科研时间记录';
     window.renderSceneLabels?.();
+    window.renderEmptyState?.();
     button.textContent='已更新';
   } catch {button.textContent='更新失败 · 重试';}
   finally {refreshing=false;button.disabled=false;}
 }
 document.getElementById('refresh-data').onclick=refreshDashboard;
-setInterval(()=>{if(!document.hidden && !dialog.open) refreshDashboard();},60000);
+// Timers may be suspended overnight. Resume/focus/BFCache all revalidate data;
+// midnight updates do not reload the document, music, preferences or form drafts.
+function refreshIfDue(resumed=false) {
+  if(document.hidden || location.protocol==='file:') return;
+  const date=calendarDate(), rolled=date!==observedCalendarDate;
+  observedCalendarDate=date;
+  if(rolled || performance.now()-lastRefreshAttempt >= (resumed?5000:60000)) refreshDashboard();
+}
+setInterval(refreshIfDue,1000);
+document.addEventListener('visibilitychange',()=>refreshIfDue(true));
+window.addEventListener('focus',()=>refreshIfDue(true));
+window.addEventListener('pageshow',()=>refreshIfDue(true));
+setTimeout(refreshDashboard,0);
 window.addEventListener('pagehide',()=>storage.set('scroll',String(window.scrollY)));
 applyAppearance();syncMusicControls();
 loadMusicLibrary().then(()=>{fillLibraryOptions();renderTrackChips();});

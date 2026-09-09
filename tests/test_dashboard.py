@@ -39,6 +39,14 @@ class DashboardTests(unittest.TestCase):
         self.assertIn(dashboard.GITHUB_USER, html)
         self.assertIn('data:image/jpeg;base64,', dashboard.avatar_data_uri())
 
+    def test_paintings_are_embedded_and_packaged(self):
+        html=dashboard.render_html({'days':[]})
+        # 只剩一块画板，所以只内嵌一张画；顶栏那张已随画板一起去掉。
+        self.assertEqual(html.count('data:image/webp;base64,'),1)
+        self.assertTrue('__FOREST_ART__' not in html and '__RAINFOREST_ART__' not in html)
+        for name in ('forest-sanctuary.webp','rainforest.webp'):
+            self.assertTrue((dashboard.asset_dir()/'art'/name).is_file())
+
     def test_avatar_missing_file_is_not_fatal(self):
         with patch.object(dashboard, 'AVATAR_PATH', Path('/nonexistent/avatar.jpg')):
             self.assertEqual(dashboard.avatar_data_uri(), '')

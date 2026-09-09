@@ -264,9 +264,15 @@ window.renderSceneLabels=function() {
   }
 };
 window.acceptDashboardData=function(next) {
+  const previousToday=TODAY.date;
   computerData=next;
   DATA=currentScene().source==='manual'?manualData(computerData,preferences.scene):computerData;
   TODAY=DATA.days.at(-1);renderSceneLabels();renderSessions();
+  const dateField=document.getElementById('session-date');
+  dateField.min=DATA.days[0].date;dateField.max=TODAY.date;
+  // Advance a pristine form, but keep the date of a half-written activity.
+  const draft=['session-start','session-end','session-note'].some(id=>document.getElementById(id).value);
+  if(!draft && (!dateField.value || dateField.value===previousToday)) dateField.value=TODAY.date;
 };
 window.applySceneSettings=function() {
   document.body.classList.toggle('no-motion',!motionEnabled());

@@ -1,6 +1,6 @@
 /* Small Galaxy — quiet, local, personal. */
 :root { --page:#f5f5f7; --surface:#fff; --surface-2:#202126; --ink:#1d1d1f; --ink-2:#626269; --ink-3:#74747c; --border:#e8e8ed; --hairline:#ededf0; --active:#0071e3; --fun:#b276c8; --idle:#d5d7dd; --warm:#0071e3; --gridline:#ededf0; --baseline:#d5d5dc; }
-body { background:var(--page); padding:0 32px 32px; letter-spacing:-.02em; }
+body { background:var(--page); padding:22px 32px 32px; letter-spacing:-.02em; }
 .wrap { max-width:1120px; }
 #starfield { display:none; }
 header { padding:18px 0; margin:0; border-bottom:1px solid var(--border); }
@@ -73,7 +73,7 @@ footer { font-size:10px; line-height:1.8; }
 .tooltip .tt-head,.tooltip .tt-lbl { color:#c2c5d0; }
 @media (min-width:900px) { .hero::after { content:'✦'; position:absolute; right:38px; top:34px; font-size:150px; color:#c8d9f3; transform:rotate(12deg); opacity:.65; } }
 @media (max-width:860px) { .kpi-row { grid-template-columns:repeat(3,1fr); } .tile { padding:20px; } .tile .value { font-size:28px; } .insight-grid { grid-template-columns:1fr; gap:0; } }
-@media (max-width:560px) { body { padding:0 16px 24px; } .hero { padding:42px 0 32px; } .hero p { font-size:13px; } .kpi-row { grid-template-columns:1fr; gap:12px; } .tile { padding:22px; } .tile .label { margin-bottom:10px; } .tile .value { font-size:36px; margin-bottom:10px; } .card { padding:22px 18px; border-radius:20px; } .focus-layout { gap:18px; } .ring { width:112px; height:112px; } .ring-inner { width:94px; height:94px; } .card-head .hint { font-size:10px; } #bar-chart { min-height:165px; } #detail-stats { gap:15px 24px; } }
+@media (max-width:560px) { body { padding:22px 16px 24px; } .hero { padding:42px 0 32px; } .hero p { font-size:13px; } .kpi-row { grid-template-columns:1fr; gap:12px; } .tile { padding:22px; } .tile .label { margin-bottom:10px; } .tile .value { font-size:36px; margin-bottom:10px; } .card { padding:22px 18px; border-radius:20px; } .focus-layout { gap:18px; } .ring { width:112px; height:112px; } .ring-inner { width:94px; height:94px; } .card-head .hint { font-size:10px; } #bar-chart { min-height:165px; } #detail-stats { gap:15px 24px; } }
 @media (prefers-reduced-motion:no-preference) { .hero,.kpi-row,.insight-grid { animation:arrive .6s ease both; } .kpi-row { animation-delay:.08s; } .insight-grid { animation-delay:.15s; } @keyframes arrive { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } } }
 
 /* Personalization: semantic colors also apply to charts and form controls. */
@@ -115,7 +115,7 @@ footer { font-size:10px; line-height:1.8; }
 .hero h2 { font-size:clamp(28px,4.2vw,50px); white-space:nowrap; width:max-content; max-width:none; color:var(--ink); line-height:1.35; letter-spacing:-.055em; }
 .hero p { max-width:900px; overflow-wrap:anywhere; }
 .hero .eyebrow { font-size:10px; letter-spacing:.15em; }
-.header-actions { display:flex; gap:8px; margin-left:6px; }
+.header-actions { display:flex; gap:8px; margin-left:16px; }
 header { justify-content:flex-start; }
 header .pill { margin-left:auto; }
 .header-actions button { font-size:12px; }
@@ -230,8 +230,8 @@ dialog .motion-setting { display:flex; align-items:center; gap:8px; }
 .manual-card .eyebrow { margin:0 0 8px; }
 @media (max-width:700px) { .session-fields { grid-template-columns:1fr 1fr; } .session-row { align-items:flex-start; } .session-row strong { font-size:11px; } }
 
-/* ---------- 装饰画：顶部森林精灵band + Hero 雨林降雨 ----------
-   全部是本地绘制的 SVG/CSS 图形，不含任何影片素材，也不发任何网络请求。 */
+/* ---------- 本地森林长卷 + 程序化雨林气候 ----------
+   AI 原创插画随 HTML 内嵌，动态由 SVG/CSS 绘制，不加载远程素材。 */
 /* 上下两条带子用两套绿：顶部是偏冷偏灰的雾林，Hero 是偏暖偏黄的热带，
    两者不至于糊成一整片。 */
 :root { --decor-forest:#4a6b63; --decor-deep:#33534e; --decor-jungle:#2f6b3d; --decor-jungle-deep:#1d5330; --decor-rain:#3f7f9c; --decor-mist:#dfe9e4; --decor-spirit:#f7faf6; --decor-spirit-face:#33534e; --decor-storm:#3d566b; --decor-sun:#ffc247; --decor-core:#ffb01f; }
@@ -239,9 +239,15 @@ dialog .motion-setting { display:flex; align-items:center; gap:8px; }
 /* 深色主题下精灵不能跟着页面变黑，否则身体和凹洞又反了过来。 */
 :root[data-dark] { --decor-forest:#5d8f85; --decor-deep:#3a6c63; --decor-jungle:#4f9a5f; --decor-jungle-deep:#2f7043; --decor-rain:#8ec8e2; --decor-mist:#22343a; --decor-spirit:#cfe0da; --decor-spirit-face:#121b22; --decor-storm:#03070d; --decor-sun:#ffd070; --decor-core:#fff0c4; }
 
-header { position:relative; overflow:hidden; padding:26px 0 24px; }
-header>*:not(#forest-band) { position:relative; z-index:1; }
-#forest-band { position:absolute; z-index:0; inset:0 auto 0 50%; width:100vw; transform:translateX(-50%); height:100%; pointer-events:none; }
+/* 顶栏 = 画卷，但按 hero 那张雨林的同一套办法处理：卡片底色是页面的 --surface，
+   画面降透明度、并从上往下渐入。上半截几乎只剩卡片底色，所以文字、徽章、按钮
+   全部沿用主题原色，不需要深色蒙版，也不需要给控件贴白底板——
+   两块画板这样才是同一种材质，而不是"一张水彩 + 一张照片"。 */
+/* 顶栏现在住在画板里：本身不再是卡片，只是画面顶部的一行。 */
+header { position:relative; z-index:2; margin:0 0 26px; padding:0; border:0; border-radius:0;
+  min-height:0; background:none; box-shadow:none; align-items:center; }
+#forest-band { position:absolute; z-index:1; inset:0; width:100%; height:100%; pointer-events:none; }
+.hero { display:flex; flex-direction:column; padding:24px 28px 54px; margin:0 0 22px; border-radius:22px; background:var(--surface); box-shadow:0 5px 20px #00000003; }
 .forest-far { fill:var(--decor-forest); opacity:calc(.16 * var(--decor-strength,1)); }
 .forest-near { fill:var(--decor-deep); opacity:calc(.26 * var(--decor-strength,1)); }
 .forest-mist { fill:url(#forest-fade); }
@@ -251,52 +257,73 @@ header>*:not(#forest-band) { position:relative; z-index:1; }
 .spirits { opacity:calc(.9 * var(--decor-strength,1)); }
 .spirits .spirit-body { fill:var(--decor-spirit); stroke:var(--decor-spirit-face); stroke-width:1.1; vector-effect:non-scaling-stroke; }
 .spirits .spirit-face { fill:var(--decor-spirit-face); }
-.motes circle { fill:var(--decor-forest); opacity:calc(.34 * var(--decor-strength,1)); }
+.motes circle { fill:#e5edbd; opacity:calc(.6 * var(--decor-strength,1)); }
 @media (prefers-reduced-motion:no-preference) {
   .kodama-head { transform-box:fill-box; transform-origin:50% 96%; animation:kodama-tilt 4s ease-in-out infinite alternate; }
   .motes circle { animation:mote-drift 7s ease-in-out infinite alternate; }
 }
 @keyframes kodama-tilt { from { transform:rotate(-11deg); } to { transform:rotate(11deg); } }
 @keyframes mote-drift { from { transform:translateY(5px); opacity:.14; } to { transform:translateY(-9px); opacity:.5; } }
+@keyframes forest-breath { from { transform:translate3d(-3%,0,0); opacity:.5; } to { transform:translate3d(4%,-4%,0); opacity:1; } }
 
-.rain-scene { position:absolute; z-index:0; top:0; bottom:0; left:50%; width:100vw; transform:translateX(-50%); pointer-events:none; overflow:hidden; }
+.rain-scene { --rain-travel:520px; --wind-tilt:1deg; --rain-slant:-5deg; position:absolute; z-index:0; top:0; bottom:0; left:50%; width:100vw; transform:translateX(-50%); pointer-events:none; overflow:hidden; }
+.rain-scene::after { content:''; position:absolute; inset:0; background:linear-gradient(90deg,var(--page),transparent 92%); opacity:.66; }
+.rainforest-backdrop { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; opacity:calc(.7 * var(--decor-strength,1)); -webkit-mask-image:linear-gradient(90deg,transparent 8%,#000 76%); mask-image:linear-gradient(90deg,transparent 8%,#000 76%); }
+:root[data-dark] .rainforest-backdrop { opacity:calc(.36 * var(--decor-strength,1)); filter:brightness(.65) saturate(.8); }
 .hero>*:not(.rain-scene) { position:relative; z-index:1; }
 .rain-foliage { position:absolute; inset:0; width:100%; height:100%; }
-.foliage-back { fill:var(--decor-jungle); opacity:calc(.15 * var(--decor-strength,1)); }
-.foliage-front { fill:var(--decor-jungle-deep); opacity:calc(.26 * var(--decor-strength,1)); }
+.foliage-back { fill:var(--decor-jungle); opacity:calc(.07 * var(--decor-strength,1)); }
+.foliage-front { fill:var(--decor-jungle-deep); opacity:calc(.15 * var(--decor-strength,1)); }
+.rain-trunks { fill:var(--decor-jungle-deep); opacity:calc(.12 * var(--decor-strength,1)); }
+.aroid-leaf { opacity:.92; }
+.leaf-veins { fill:none; stroke:#b9d49e; stroke-width:1.2; opacity:.38; }
+.leaf-bead { fill:#dcefd9; opacity:var(--wet,.5); }
+.rain-foliage .leaf { transform-box:fill-box; transform-origin:50% 95%; animation:canopy-sway 8s ease-in-out infinite alternate; }
 .leaf-rib { fill:none; stroke:currentColor; stroke-width:2.4; opacity:.55; }
-.rain-mist { position:absolute; left:-30%; width:70%; height:34%; border-radius:50%; background:radial-gradient(closest-side,var(--decor-mist),transparent); opacity:calc((.28 + .42 * var(--storm,.3)) * var(--decor-strength,1)); animation:mist-drift linear infinite; }
-.rain-layer { position:absolute; inset:0; }
+.rain-mist { position:absolute; left:-30%; width:70%; height:34%; border-radius:50%; background:radial-gradient(closest-side,var(--decor-mist),transparent); opacity:calc((.1 + .7 * var(--mist,.3)) * var(--decor-strength,1)); animation:mist-drift linear infinite; }
+.rain-layer { position:absolute; inset:0; transform:skewX(var(--rain-slant)); transform-origin:50% 0; transition:transform 1.2s linear; }
 .rain-layer span { position:absolute; top:-16%; width:1.4px; height:var(--len); border-radius:1px; background:linear-gradient(to bottom,transparent,var(--decor-rain)); animation:rain-fall linear infinite; }
 /* 每层雨的可见度由天气相位给出，雨滴动画本身从不重启。 */
 .rain-far { opacity:calc(.42 * var(--rain-far,.3) * var(--decor-strength,1)); }
 .rain-mid { opacity:calc(.72 * var(--rain-mid,0) * var(--decor-strength,1)); }
 .rain-near { opacity:calc(1 * var(--rain-near,0) * var(--decor-strength,1)); }
 .rain-near span { width:2.4px; }
-.rain-splashes { position:absolute; inset:auto 0 6px; height:16px; opacity:calc(var(--rain-mid,0) * var(--decor-strength,1)); }
+.rain-splashes { position:absolute; inset:auto 0 6px; height:44px; opacity:calc((var(--rain-mid,0) * .65 + var(--drip,.2) * .25) * var(--decor-strength,1)); }
 .rain-splashes span { position:absolute; bottom:0; width:16px; height:5px; margin-left:-8px; border:1px solid var(--decor-rain); border-radius:50%; opacity:0; animation:ripple ease-out infinite; }
-.storm-veil { position:absolute; inset:0; background:linear-gradient(to bottom,var(--decor-storm),transparent 82%); opacity:calc(.6 * var(--storm,0) * var(--decor-strength,1)); }
-/* 放晴：暖光洗过整个画面，再加一轮带光芒的太阳。淡黄配浅底容易糊，所以核心要实、要有光芒。 */
+.storm-veil { position:absolute; inset:0; background:linear-gradient(to bottom,var(--decor-storm),transparent 82%); opacity:calc(.28 * var(--cloud,0) * var(--decor-strength,1)); }
+/* Canopy-filtered light: no cartoon sun, no flashing lightning. */
 .sun-wash { position:absolute; inset:0; background:linear-gradient(215deg,var(--decor-sun),transparent 58%); opacity:calc(.34 * var(--sun,0) * var(--decor-strength,1)); }
-.rain-sun { position:absolute; top:5%; right:11%; width:172px; height:172px; opacity:calc(var(--sun,0) * var(--decor-strength,1)); }
-.rain-sun span { position:absolute; inset:0; border-radius:50%; }
-.sun-rays { background:repeating-conic-gradient(from 0deg,var(--decor-sun) 0deg 2.4deg,transparent 2.4deg 18deg);
-  -webkit-mask-image:radial-gradient(closest-side,transparent 26%,#000 44%,transparent 88%);
-  mask-image:radial-gradient(closest-side,transparent 26%,#000 44%,transparent 88%); opacity:.7; }
-.sun-halo { background:radial-gradient(closest-side,var(--decor-sun) 18%,transparent 74%); }
-.sun-core { inset:35%!important; background:var(--decor-core); box-shadow:0 0 26px 10px var(--decor-sun); }
-@media (prefers-reduced-motion:no-preference) {
-  .rain-sun { animation:sun-breathe 9s ease-in-out infinite alternate; }
-  .sun-rays { animation:sun-spin 70s linear infinite; }
-}
-@keyframes sun-breathe { from { transform:scale(.95); } to { transform:scale(1.05); } }
-@keyframes sun-spin { to { transform:rotate(360deg); } }
-@keyframes rain-fall { from { transform:translate3d(12px,-20px,0); } to { transform:translate3d(-18px,400px,0); } }
+.sun-shafts { position:absolute; inset:-35% 0 -40%; opacity:calc(var(--sun,0) * var(--decor-strength,1)); transform:rotate(24deg); }
+.sun-shafts span { position:absolute; top:0; height:100%; background:linear-gradient(180deg,#fff2bda1,transparent); filter:blur(6px); animation:shaft-breathe 10s ease-in-out infinite alternate; }
+.rain-clouds { position:absolute; inset:-35% -20% 40%; background:radial-gradient(ellipse at 65% 25%,var(--decor-storm),transparent 62%); opacity:calc(var(--cloud,.2) * .3 * var(--decor-strength,1)); animation:cloud-travel 26s ease-in-out infinite alternate; }
+.rain-curtain { position:absolute; inset:0; background:repeating-linear-gradient(103deg,transparent 0 9px,#acd2dc20 10px,transparent 11px 19px); opacity:calc(var(--storm,0) * .44 * var(--decor-strength,1)); }
+.wet-ground { position:absolute; inset:72% 0 0; background:linear-gradient(0deg,var(--decor-mist),transparent); opacity:calc(var(--wet,.5) * .5 * var(--decor-strength,1)); }
+.canopy-drips { position:absolute; inset:0; opacity:calc(var(--drip,.2) * .6 * var(--decor-strength,1)); }
+.canopy-drips span { position:absolute; width:2px; height:5px; background:var(--decor-rain); border-radius:50%; animation:canopy-drip 4s ease-in infinite; }
+@keyframes rain-fall { from { transform:translate3d(0,-20px,0); } to { transform:translate3d(0,var(--rain-travel),0); } }
+@keyframes canopy-sway { from { transform:rotate(calc(-.6deg - var(--wind-tilt))); } to { transform:rotate(calc(.6deg + var(--wind-tilt))); } }
+@keyframes canopy-drip { 0%,55% { transform:translateY(0) scale(.5); opacity:0; } 62% { transform:translateY(0) scale(1); opacity:.8; } 95%,100% { transform:translateY(280px) scale(.7,1.4); opacity:0; } }
+@keyframes cloud-travel { from { transform:translateX(-8%); } to { transform:translateX(6%); } }
+@keyframes shaft-breathe { from { opacity:.3; transform:translateX(-10px); } to { opacity:.72; transform:translateX(14px); } }
 @keyframes mist-drift { from { transform:translateX(0); } to { transform:translateX(210%); } }
 @keyframes ripple { 0% { transform:scale(.3); opacity:.55; } 70%,100% { transform:scale(1.5); opacity:0; } }
 /* 关掉动画时雨滴会僵在半空，直接收起雨与雾，只留植物剪影。 */
-.no-motion .rain-layer,.no-motion .rain-splashes,.no-motion .rain-mist { display:none; }
-.no-decor #forest-band,.no-decor .rain-scene { display:none; }
+.no-motion .rain-layer,.no-motion .rain-splashes,.no-motion .rain-mist,.no-motion .canopy-drips { display:none; }
+.no-decor .rain-scene { display:none; }
+.no-decor .hero { background:none; box-shadow:none; padding-left:0; padding-right:0; }
+.no-decor header { padding-bottom:16px; border-bottom:1px solid var(--border); }
+.decor-paused .forest-sanctuary *,.decor-paused .rain-scene * { animation-play-state:paused!important; }
+@media (prefers-reduced-motion:reduce) {
+  .forest-sanctuary *,.rain-scene * { animation:none!important; transition:none!important; }
+  .rain-layer,.rain-splashes,.rain-mist,.canopy-drips { display:none; }
+}
+@media (max-width:560px) {
+
+  .forest-art { object-fit:cover; }
+  .hero { padding:16px 16px 44px; margin:0 0 22px; border-radius:15px; }
+  header { margin-bottom:18px; }
+  .rain-scene::after { opacity:.8; }
+}
 
 /* GitHub 头像：hero 底部的署名，图片是内嵌 data URI，点击才会去 github.com。 */
 .hero-foot { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-top:20px; }

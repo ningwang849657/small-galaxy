@@ -1,5 +1,7 @@
 """Loopback-only, read-only dashboard server; never serves raw logs or arbitrary paths."""
 import json
+import datetime
+import math
 import re
 import subprocess
 import sys
@@ -10,6 +12,8 @@ from pathlib import Path
 from urllib.error import URLError
 from urllib.request import ProxyHandler, build_opener
 
+from . import dashboard
+
 PORT = 8766
 URL = f"http://127.0.0.1:{PORT}"
 PAGE = Path.home() / '.lab_tracker' / 'dashboard.html'
@@ -19,6 +23,40 @@ MUSIC_DIR = Path.home() / '.lab_tracker' / 'music'
 AUDIO_TYPES = {'.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.ogg': 'audio/ogg',
                '.oga': 'audio/ogg', '.opus': 'audio/ogg', '.wav': 'audio/wav',
                '.flac': 'audio/flac', '.aac': 'audio/aac'}
+
+
+def live_dashboard_data() -> dict:
+    """The saved HTML is a fallback export, never the source of today's statistics.
+
+    Retain export options and a *recent* first-start hint, but rebuild dates, log
+    totals and recording status on every request, including when sampling stopped.
+    """
+    snapshot = {}
+    try:
+        match = re.search(r'^let DATA = (.+);$', PAGE.read_text(encoding='utf-8'), re.M)
+        if match:
+            value = json.loads(match[1])
+            if isinstance(value, dict):
+                snapshot = value
+    except (OSError, ValueError):
+        pass  # A missing or incomplete export must not prevent a live dashboard.
+    threshold = snapshot.get('threshold_seconds', dashboard.DEFAULT_THRESHOLD_SECONDS)
+    if not isinstance(threshold, (int, float)) or not math.isfinite(threshold) or threshold <= 0:
+        threshold = dashboard.DEFAULT_THRESHOLD_SECONDS
+    days = snapshot.get('days')
+    window_days = len(days) if isinstance(days, list) and 1 <= len(days) <= 366 else dashboard.WINDOW_DAYS
+    started = False
+    if snapshot.get('daemon_started'):
+        try:
+            age = (datetime.datetime.now() - datetime.datetime.fromisoformat(snapshot['generated_at'])).total_seconds()
+            started = 0 <= age < dashboard.STALE_AFTER_SECONDS
+        except (KeyError, TypeError, ValueError):
+            pass
+    return dashboard.build_dashboard_data(threshold, window_days, daemon_started=started)
+
+
+def live_dashboard_html() -> bytes:
+    return dashboard.render_html(live_dashboard_data()).encode('utf-8')
 
 
 def list_music() -> list:
@@ -63,12 +101,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/health':
                 body, mime = IDENTITY, 'text/plain'
             elif path in ('/', '/dashboard.html'):
-                body, mime = PAGE.read_bytes(), 'text/html; charset=utf-8'
+                body, mime = live_dashboard_html(), 'text/html; charset=utf-8'
             elif path == '/data':
-                match = re.search(r'^let DATA = (.+);$', PAGE.read_text(encoding='utf-8'), re.M)
-                if not match:
-                    raise ValueError('Dashboard data missing')
-                body = json.dumps(json.loads(match[1]), ensure_ascii=False).encode()
+                body = json.dumps(live_dashboard_data(), ensure_ascii=False).encode('utf-8')
                 mime = 'application/json; charset=utf-8'
             elif path == '/music':
                 body = json.dumps(list_music(), ensure_ascii=False).encode()

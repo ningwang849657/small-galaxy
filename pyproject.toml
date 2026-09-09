@@ -42,4 +42,4 @@ small-galaxy-report = "smallgalaxy.summary:main"
 packages = ["smallgalaxy"]
 
 [tool.setuptools.package-data]
-smallgalaxy = ["assets/*.css", "assets/*.js", "assets/icons/*"]
+smallgalaxy = ["assets/*.css", "assets/*.js", "assets/icons/*", "assets/art/*"]

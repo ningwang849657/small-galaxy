@@ -1,5 +1,6 @@
 """Run real Chrome interaction checks in an isolated temporary page/profile."""
 import subprocess
+import datetime
 import json
 import time
 import threading
@@ -26,6 +27,7 @@ try {
  check(selectedDate===DATA.days[12].date,'previous day');
  document.getElementById('today-button').click();
  check(selectedDate===TODAY.date,'today');
+ check(location.hash==='#today','today is a rolling bookmark, not a fixed ISO date');
  goalSelect.value='8'; goalSelect.dispatchEvent(new Event('change'));
  await settle(950);
  check(storage.get('goal')==='8','goal persistence');
@@ -33,9 +35,32 @@ try {
  check(document.querySelectorAll('#hour-bars span').length===24,'hour bins');
  check(!document.querySelector('iframe'),'music must not contact YouTube before Play');
  check(document.getElementById('hero-title').querySelector('br')===null,'headline stays one line');
- // Decorative artwork is drawn locally and must never pull an external asset.
- check(document.querySelectorAll('#forest-band .kodama').length===7,'forest spirits drawn');
+ // The painting is inlined locally; dynamic artwork never pulls an external asset.
+ const rainArt=document.querySelector('.rainforest-backdrop');await rainArt.decode();
+ check(rainArt.naturalWidth>1400,'painted rainforest decodes from its data URI');
+ check(document.querySelectorAll('#forest-band .kodama').length>=4,'forest spirits drawn');
  check(document.querySelectorAll('.rain-layer span').length===110,'rain drops drawn');
+ // One canvas only: the header row lives inside the hero, sharing its painting.
+ const hero=document.querySelector('.hero');
+ check(!document.querySelector('.forest-sanctuary'),'the second art panel is gone');
+ check(document.querySelector('header').parentElement===hero,'the header row sits inside the one canvas');
+ check(document.querySelector('#forest-band').closest('.rain-scene'),'the spirits moved into the rainforest');
+ check(Number(getComputedStyle(document.querySelector('.rainforest-backdrop')).opacity)<1,
+   'the painting stays a wash, not a full-strength photo');
+ check(!document.querySelector('.forest-caption') && !document.querySelector('.weather-note'),
+   'no decorative captions on the artwork');
+ // Spirits must not be sliced off by the panel edge.
+ const heroBox=hero.getBoundingClientRect();
+ [...document.querySelectorAll('#forest-band .kodama')].forEach(spirit=>{
+   check(spirit.getBoundingClientRect().bottom<=heroBox.bottom,'a spirit is clipped by the panel edge');
+ });
+ // One vertical rhythm, or the art panels read as bolted on.
+ const gapOf=(a,b)=>Math.round(document.querySelector(b).getBoundingClientRect().top
+                              -document.querySelector(a).getBoundingClientRect().bottom);
+ const topGap=Math.round(document.querySelector('.hero').getBoundingClientRect().top+scrollY);
+ check(topGap>0,'the first panel is not flush against the top edge');
+ const rhythm=[topGap,gapOf('.hero','.music-card'),gapOf('.music-card','.kpi-row'),gapOf('.kpi-row','.insight-grid')];
+ check(rhythm.every(gap=>gap===rhythm[0]),'sections share one vertical rhythm, got '+rhythm.join('/'));
  // First-run guidance appears only when nothing has ever been recorded.
  check(document.getElementById('first-run').hidden,'no first-run card once data exists');
  const realDays=DATA.days, realStatus=DATA.daemon_status;
@@ -51,16 +76,24 @@ try {
  check(document.getElementById('first-run').innerText.includes('已经开始记录'),'it confirms recording began');
  DATA.daemon_started=false; DATA.days=realDays; DATA.daemon_status=realStatus; renderEmptyState();
  check(document.getElementById('first-run').hidden,'card hides again once data is back');
- // Weather runs as a phase: drizzle builds to a downpour, eases off, then the sun comes out.
+ // Clouds precede a convective shower; fog, wet ground and leaf drip outlast it.
  const weatherOf=p=>{const w=weatherAt(p);return [Number(w.rain.toFixed(3)),Number(w.sun.toFixed(3))];};
- check(weatherOf(0)[0]>0 && weatherOf(0)[0]<.4 && weatherOf(0)[1]===0,'cycle starts on light rain');
- check(weatherOf(.35)[0]===1,'cycle reaches a downpour');
- check(weatherOf(.6)[0]<weatherOf(.35)[0],'downpour eases off');
+ check(weatherOf(0)[0]===0 && weatherAt(0).mist>.8,'cycle starts in humid morning mist');
+ check(weatherAt(.24).cloud>.8 && weatherOf(.24)[0]===0,'clouds build before the rain');
+ check(weatherOf(.36)[0]===1,'cycle reaches a downpour');
+ check(weatherOf(.6)[0]<weatherOf(.36)[0],'downpour eases off');
+ check(weatherAt(.64).rain===0 && weatherAt(.64).drip>.8 && weatherAt(.64).mist>.9,'canopy drips and steams after rain');
  check(weatherOf(.86)[0]===0 && weatherOf(.86)[1]===1,'cycle clears to full sun');
  check(Math.abs(weatherOf(1)[0]-weatherOf(0)[0])<.001 && weatherOf(1)[1]===weatherOf(0)[1],'cycle wraps seamlessly');
+ for(const key of WEATHER_FIELDS) check(Math.abs(weatherAt(1)[key]-weatherAt(0)[key])<.001,'all climate channels loop: '+key);
+ for(let phase=0;phase<1;phase+=.01) for(const value of Object.values(weatherAt(phase))) check(value>=0 && value<=1,'climate values stay bounded');
  const rainLevel=()=>Number(getComputedStyle(document.querySelector('.rain-scene')).getPropertyValue('--rain-near'));
  window.applyWeatherSettings('storm',96); check(rainLevel()>.9,'fixed storm');
  window.applyWeatherSettings('clear',96); check(rainLevel()===0,'fixed clear sky');
+ check(document.querySelectorAll('.canopy-drips span').length===16,'leaf tip drips');
+ check(document.querySelectorAll('.sun-shafts span').length===5,'canopy-filtered sun shafts');
+ window.applyDecorSettings(false);check(weatherTimer===0,'hidden decoration stops the climate timer');
+ window.applyDecorSettings(true);
  window.applyWeatherSettings(preferences.weatherMode,preferences.weatherCycle);
  // The YouTube player is only an audio source: parked off screen, never taking space on the card.
  const wrapStyle=getComputedStyle(document.getElementById('youtube-wrap'));
@@ -218,7 +251,42 @@ try {
  const originalFetch=window.fetch;
  window.fetch=async()=>({ok:true,json:async()=>structuredClone(DATA)});
  // /data is a read-only loopback endpoint; test successful update without replacing the audio element.
- if(location.protocol!=='file:') {await refreshDashboard();check(!audioPlayer.paused,'refresh preserves music');}
+ if(location.protocol!=='file:') {
+   await refreshDashboard();check(!audioPlayer.paused,'refresh preserves music');
+   const baseline=structuredClone(computerData), oldToday=TODAY.date;
+   const advance=(source)=>{
+     const now=new Date(source.days.at(-1).date+'T12:00:00');now.setDate(now.getDate()+1);
+     const date=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+     return {...source,generated_at:date+'T00:00:01',daemon_status:'unknown',days:[...source.days.slice(1),{...source.days.at(-1),date,weekday:'新的一天',has_data:false,active_seconds:0,fun_seconds:0,idle_seconds:0,total_presence_seconds:0,sample_count:0,arrival:null,departure:null,segments:[]}]};
+   };
+   const tomorrow=advance(baseline);
+   selectDay(TODAY.date);
+   window.fetch=async()=>({ok:true,json:async()=>structuredClone(tomorrow)});
+   await refreshDashboard();
+   check(TODAY.date===tomorrow.days.at(-1).date && selectedDate===TODAY.date,'midnight follows today');
+   check(TODAY.active_seconds===0 && location.hash==='#today','new day does not reuse yesterday totals');
+   check(document.getElementById('hero-date').textContent.includes(TODAY.date),'hero date rolls over');
+   check(document.getElementById('session-date').max===TODAY.date,'manual date bounds roll over');
+   check(document.getElementById('session-date').value===TODAY.date,'pristine form follows new day');
+   check(!audioPlayer.paused,'midnight preserves music');
+   selectDay(oldToday);
+   const dayAfter=advance(tomorrow);
+   window.fetch=async()=>({ok:true,json:async()=>structuredClone(dayAfter)});
+   await refreshDashboard();check(selectedDate===oldToday,'explicit history selection survives rollover');
+   window.fetch=async()=>({ok:true,json:async()=>structuredClone(baseline)});
+   await refreshDashboard();selectDay(TODAY.date);
+   preferences.scene='exercise';applyAppearance();
+   document.getElementById('session-start').value='18:00';document.getElementById('session-note').value='还没写完';
+   window.fetch=async()=>({ok:true,json:async()=>structuredClone(tomorrow)});
+   await refreshDashboard();
+   check(TODAY.active_seconds===0 && DATA.days.find(d=>d.date===oldToday).active_seconds===1800,'manual ledger remains on its original date');
+   check(document.getElementById('session-date').value===oldToday && document.getElementById('session-note').value==='还没写完','midnight preserves draft and its date');
+   const lastGood=TODAY.date;
+   window.fetch=async()=>{throw Error('offline');};await refreshDashboard();
+   check(TODAY.date===lastGood && document.getElementById('refresh-data').textContent.includes('失败'),'offline retains last good data and reports failure');
+   window.fetch=async()=>({ok:true,json:async()=>structuredClone(baseline)});
+   preferences.scene='research';await refreshDashboard();applyAppearance();selectDay(TODAY.date);resetSessionForm();
+ }
  window.fetch=originalFetch;
  await playButton.onclick();check(audioPlayer.paused,'pause audio');
  stopMusic();dialog.close();
@@ -262,7 +330,12 @@ try {
 """
 
 with tempfile.TemporaryDirectory(prefix='galaxy-test-') as tmp:
-    data = dashboard.build_dashboard_data()
+    # Deterministic fixtures; never read or mutate the user's real activity log.
+    def sample_records(day):
+        start=datetime.datetime.combine(day,datetime.time(9))
+        return [(start+datetime.timedelta(minutes=i),0.0,'Editor') for i in range(121)]
+    with patch.object(dashboard,'load_records',side_effect=sample_records),patch.object(dashboard,'check_daemon_status',return_value='active'):
+        data = dashboard.build_dashboard_data()
     page = Path(tmp) / 'test.html'
     online='--online-music' in sys.argv
     online_checks='''<script>playButton.onclick(); setInterval(()=>{
@@ -277,7 +350,9 @@ with tempfile.TemporaryDirectory(prefix='galaxy-test-') as tmp:
             +(16000).to_bytes(4,'little')+(2).to_bytes(2,'little')+(16).to_bytes(2,'little')
             +b'data'+(16000).to_bytes(4,'little'))
     (music/'library silence.wav').write_bytes(header+bytes(16000))
-    with patch.object(dashboard_server,'PAGE',page),patch.object(dashboard_server,'MUSIC_DIR',music):
+    with patch.object(dashboard_server,'live_dashboard_html',side_effect=lambda:page.read_bytes()), \
+         patch.object(dashboard_server,'live_dashboard_data',side_effect=lambda:data), \
+         patch.object(dashboard_server,'MUSIC_DIR',music):
         server=ThreadingHTTPServer(('127.0.0.1',0),dashboard_server.Handler)
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         try:
@@ -326,6 +401,16 @@ with tempfile.TemporaryDirectory(prefix='galaxy-test-') as tmp:
                     shot=cdp('Page.captureScreenshot',{'format':'png'})
                     Path(f'/tmp/galaxy-personalized-{width}.png').write_bytes(base64.b64decode(shot['result']['data']))
                     if not online:
+                        for weather in ('storm','clear'):
+                            cdp('Runtime.evaluate',{'expression':f"applyWeatherSettings('{weather}',96);"})
+                            time.sleep(.4)
+                            shot=cdp('Page.captureScreenshot',{'format':'png'})
+                            Path(f'/tmp/galaxy-{weather}-{width}.png').write_bytes(base64.b64decode(shot['result']['data']))
+                        cdp('Runtime.evaluate',{'expression':"preferences.theme='night';applyAppearance();applyWeatherSettings('storm',96);"})
+                        time.sleep(.4)
+                        shot=cdp('Page.captureScreenshot',{'format':'png'})
+                        Path(f'/tmp/galaxy-night-{width}.png').write_bytes(base64.b64decode(shot['result']['data']))
+                        cdp('Runtime.evaluate',{'expression':"preferences={...DEFAULT_PREFS};applyAppearance();"})
                         cdp('Runtime.evaluate',{'expression':"preferences.scene='exercise'; preferences.title=SCENES.exercise.title; preferences.signature=SCENES.exercise.signature; applyAppearance(); window.scrollTo(0,0);"})
                         time.sleep(1)
                         result=cdp('Runtime.evaluate',{'expression':"document.documentElement.scrollWidth<=innerWidth",'returnByValue':True})
