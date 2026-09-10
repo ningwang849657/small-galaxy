@@ -29,6 +29,7 @@ function buildSpiritLayer() {
   const W = 1440, H = 480;
   const band = el('svg', { id: 'forest-band', viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'xMidYMax slice', 'aria-hidden': 'true' });
   band.appendChild(el('g', { class: 'spirits' }));
+  band.appendChild(el('g', { class: 'beasts' }));
   band.appendChild(el('g', { class: 'focus-stars' }));
   return band;
 }
@@ -47,7 +48,12 @@ const STAR_SEATS = (() => {
 /* 避让区不能写死：wrap 是流式的，文字块的位置随视口宽度变。
    必须逐个元素分别判定——把它们并成一个大矩形的话，几个分散的文字块会把
    整块画面都圈进去（1440 下并集是 x86–1354），装饰就一个都放不下了。 */
-const TEXT_NODES = ['#hero-title', '#hero-signature', '.author-chip', '.hero-meta', 'header .brand', '.header-actions'];
+/* 浮在画上的字必须留出干净的底，谁都不能压；播放键、芯片这些控件自带底色，
+   住民可以从它们后面走过去——鹿要涉水过河，河就在这一排控件下面。 */
+const MUSIC_NODES = ['.music-label'];
+const CONTROL_NODES = ['.music-actions', '.track-chips'];
+const TEXT_NODES = ['#hero-title', '#hero-signature', '.hero > .eyebrow', '.author-chip', '.hero-meta',
+  'header .brand', '.header-actions', ...MUSIC_NODES];
 /* 块级元素的矩形横跨整行，哪怕文字只有半行；用 Range 取真实的文字包围盒，
    否则一个 <p> 就能把整条画面圈成禁区。 */
 function tightRect(node) {
@@ -59,14 +65,14 @@ function tightRect(node) {
   } catch {}
   return node.getBoundingClientRect();
 }
-function textBoxesInViewBox(band) {
+function viewBoxRects(band, selectors) {
   const box = band.getBoundingClientRect();
   if (!box.width || !box.height) return [];
-  const scale = Math.max(box.width / 1440, box.height / 480);   // preserveAspectRatio=slice
-  const originX = (1440 - box.width / scale) / 2;               // xMid
-  const originY = 480 - box.height / scale;                     // YMax：底对齐
+  const view = band.viewBox.baseVal;
+  const scale = box.width / view.width;
+  const originX = view.x, originY = view.y;
   const boxes = [];
-  for (const selector of TEXT_NODES) {
+  for (const selector of selectors) {
     const node = document.querySelector(selector);
     if (!node) continue;
     const r = tightRect(node);
@@ -78,6 +84,7 @@ function textBoxesInViewBox(band) {
   }
   return boxes;
 }
+const textBoxesInViewBox = band => viewBoxRects(band, TEXT_NODES);
 const hits = (boxes, x0, x1, y0, y1) =>
   boxes.some(b => x1 > b.x0 - 6 && x0 < b.x1 + 6 && y1 > b.y0 - 5 && y0 < b.y1 + 5);
 
@@ -89,12 +96,26 @@ function starPath(r) {
 const SPIRIT_SEATS = [[96, 430, .92], [214, 446, 1.15], [368, 436, .82], [520, 440, .78],
   [700, 448, .9], [880, 434, .84], [1058, 440, .86], [1208, 448, 1.1], [1348, 433, .95]];
 
-/* ---------- 三只神灵：按天气现身 ----------
-   都是现画的剪影，和木灵一套做法，不含任何影片素材。
-   出太阳→鹿（山兽神），大雾→白狼，暴雨→夜行的巨神。 */
+/* Painted, transparent residents of the existing canvas, not extra art panels.
+   The weather bindings stay unchanged; vector shapes are an offline fallback if
+   a minimal install is missing an asset. Every image is anchored at its feet. */
+function paintedBeast(kind, source, width, height) {
+  if (!source.startsWith('data:image/')) return null;
+  const g = el('g', { class: 'beast beast-' + kind + ' beast-painted' });
+  if (kind !== 'night') g.appendChild(el('ellipse', {
+    cx: 0, cy: -2, rx: width * .32, ry: 3, class: 'beast-contact'
+  }));
+  g.appendChild(el('image', {
+    class: 'beast-portrait', href: source, x: -width/2, y: -height,
+    width, height, preserveAspectRatio: 'xMidYMax meet'
+  }));
+  return g;
+}
 function forestDeer() {
+  const painting = paintedBeast('deer', '__DEER_ART__', 112, 136);
+  if (painting) return painting;
   // 实心剪影：腿、角都用有宽度的填充块，和身体一个重量，别一半实一半线。
-  const g = el('g', { class: 'beast beast-deer' });
+  const g = el('g', { class: 'beast beast-deer', transform: 'translate(0 -33)' });
   [[-19, 2.6], [-10, 1.2], [12, -1.2], [21, -2.6]].forEach(([x, lean]) =>
     g.appendChild(el('path', { d: `M${x - 2.4},-6 L${x + 2.4},-6 L${x + lean + 2},33 L${x + lean - 2},33 Z` })));
   g.appendChild(el('ellipse', { cx: 0, cy: -17, rx: 27, ry: 13.5 }));
@@ -111,7 +132,9 @@ function forestDeer() {
   return g;
 }
 function whiteWolf() {
-  const g = el('g', { class: 'beast beast-wolf' });
+  const painting = paintedBeast('wolf', '__WOLF_ART__', 138, 92);
+  if (painting) return painting;
+  const g = el('g', { class: 'beast beast-wolf', transform: 'translate(0 -21)' });
   [[-16, 1.8], [-8, .8], [9, -.8], [17, -1.8]].forEach(([x, lean]) =>
     g.appendChild(el('path', { d: `M${x - 2.2},-6 L${x + 2.2},-6 L${x + lean + 1.9},21 L${x + lean - 1.9},21 Z` })));
   g.appendChild(el('ellipse', { cx: 0, cy: -14, rx: 24, ry: 10 }));
@@ -123,6 +146,8 @@ function whiteWolf() {
   return g;
 }
 function nightSpirit() {
+  const painting = paintedBeast('night', '__NIGHT_ART__', 112, 176);
+  if (painting) return painting;
   const g = el('g', { class: 'beast beast-night' });
   g.appendChild(el('path', { d: 'M-14,0 C-10,-54 -8,-106 -5,-152 L5,-152 C8,-106 10,-54 14,0 Z' }));
   g.appendChild(el('ellipse', { cx: 0, cy: -162, rx: 12, ry: 14 }));
@@ -130,33 +155,80 @@ function nightSpirit() {
     d: `M${side * 8},-140 C${side * 27},-121 ${side * 31},-87 ${side * 21},-55 L${side * 15},-58 C${side * 24},-86 ${side * 20},-117 ${side * 5},-134 Z` })));
   return g;
 }
-/* 每只给几个备选位置：主位被文字挡住就往旁边挪，而不是干脆不出现。 */
+/* World coordinates belong to the painted terrain, never to the empty UI space.
+   Only shrink within a habitat; never move the wolf away from its tree to fit.
+   The deer changes banks on its next appearance, not on every weather tick. */
+let deerBank = 1, deerWasVisible = false, forestFocus = 'wolf', forestPan = .5;
+// 鹿在过河：落脚点就在前景那道浅滩上，正对播放键和循环键的下方，蹄子踩进水里。
+// y≥400 的都算涉水，画的时候把小腿化进水面、不打接地阴影。
+// 岸上那两处留作备选：浅滩被裁掉或放不下时才用。
+const DEER_FORDS = [[[330, 434], [296, 428]], [[470, 424], [508, 430]]];
+// 先试自己这一侧的浅滩，再试对岸那处，两处都放不下才回到岸上。
+const DEER_BANKS = [[...DEER_FORDS[0], ...DEER_FORDS[1], [425, 334], [441, 326]],
+                    [...DEER_FORDS[1], ...DEER_FORDS[0], [780, 343], [766, 334]]];
+const WADING_DEPTH = 400;
+// 三处栖息地的中点，窄屏裁切以它为准。
+const HABITAT_CENTRE = 740;
 const BEASTS = [
-  { make: forestDeer, seats: [[1146, 452], [986, 452], [1292, 450]], scale: 1.05, half: [58, 100] },
-  { make: whiteWolf, seats: [[1010, 456], [330, 458], [660, 456]], scale: .95, half: [50, 56] },
-  { make: nightSpirit, seats: [[742, 462], [590, 462], [900, 462]], scale: .8, half: [34, 180] },
+  // 站在最深处的河湾里，身量按“看得出是巨神”给：那一带没有文字，能长到画面的四成。
+  { kind: 'night', habitat: 'deep-forest', make: nightSpirit, seats: [[656, 306], [669, 300]], scale: 1.15, half: [56, 176] },
+  { kind: 'deer', habitat: 'riverbank', make: forestDeer, scale: 1.24, half: [56, 136] },
+  // 树根前那片苔藓坡（画面 67–76% 宽、76–78% 高）。原来的 1200/352 落在前景那几片
+  // 大叶子中间，脚下没有地，看着就是悬在半空。
+  { kind: 'wolf', habitat: 'tree-roots', make: whiteWolf, seats: [[1030, 370], [1060, 364], [1000, 376]], scale: 1.4, half: [69, 92] },
 ];
+
+function frameForest(band) {
+  const rect = band.getBoundingClientRect();
+  if (!rect.width || !rect.height) return null;
+  const scale = Math.max(rect.width / 1440, rect.height / 480);
+  const width = rect.width / scale, height = rect.height / scale;
+  // 裁切只由版面决定，不跟着天气走：镜头一跟住民换位置，天气一变整幅画就会
+  // 在眼前横移一下。窄屏上取三处栖息地的中点，让谁都尽量留在画面里。
+  forestPan = width < 1439 ? Math.max(0, Math.min(1, (HABITAT_CENTRE - width / 2) / (1440 - width))) : .5;
+  const x = (1440 - width) * forestPan, y = 480 - height;
+  band.setAttribute('viewBox', `${x} ${y} ${width} ${height}`);
+  band.setAttribute('preserveAspectRatio', 'none');
+  band.closest('.rain-scene').style.setProperty('--forest-position', `${forestPan * 100}%`);
+  return { x, y, width, height };
+}
 
 window.renderSpirits = function () {
   const group = document.querySelector('#forest-band .spirits');
   if (!group) return;
+  const view = frameForest(group.ownerSVGElement);
+  if (!view) return;
   group.replaceChildren();
+  const beasts = document.querySelector('#forest-band .beasts');
+  beasts.replaceChildren();
   const boxes = textBoxesInViewBox(group.ownerSVGElement);
-  // 木灵大致向上占 24 个单位、左右各 11 个（都乘缩放）。
-  const clear = ([x, y, scale]) => !hits(boxes, x - 11 * scale, x + 11 * scale, y - 24 * scale, y);
+  const withControls = [...boxes, ...viewBoxRects(group.ownerSVGElement, CONTROL_NODES)];
+  // 木灵大致向上占 24 个单位、左右各 11 个（都乘缩放）。小东西躲开控件，别从按钮后面露半个头。
+  const clear = ([x, y, scale]) => !hits(withControls, x - 11 * scale, x + 11 * scale, y - 24 * scale, y);
   SPIRIT_SEATS.filter(clear).slice(0, 7).forEach(([x, y, scale], index) => {
     const seat = el('g', { transform: 'translate(' + x + ' ' + y + ')' });
     seat.appendChild(kodama(scale, 3.4 + ((index * 37) % 32) / 10));
     group.appendChild(seat);
   });
-  // 神灵和木灵共用同一套避让：它们体型大，压到标题上会很难看。
-  BEASTS.forEach(({ make, seats, scale, half: [halfW, halfH] }) => {
-    const spot = seats.find(([x, y]) =>
-      !hits(boxes, x - halfW * scale, x + halfW * scale, y - halfH * scale, y));
-    if (!spot) return;
-    const seat = el('g', { transform: `translate(${spot[0]} ${spot[1]}) scale(${scale})` });
-    seat.appendChild(make());
-    group.appendChild(seat);
+  // 控件那一排的上沿。涉水的位置在它下面，身子必然有一截被按钮挡住；画板矮的时候
+  // 挡掉的太多，只剩一对角露在外面，那就别下水，回岸上站着。
+  const controlTop = viewBoxRects(group.ownerSVGElement, CONTROL_NODES)
+    .reduce((top, box) => Math.min(top, box.y0), 480);
+  BEASTS.forEach(({ kind, habitat, make, seats, scale: baseScale, half: [halfW, height] }) => {
+    const choices = seats || [...DEER_BANKS[deerBank], ...DEER_BANKS[1 - deerBank]];
+    // 缩到一半以下就不是住民、只是一个点了：宁可这一轮不出场，也不放一只看不清的。
+    for (const shrink of [1,.82,.66,.55,.45]) {
+      const scale=Math.min(baseScale, view.width * .5 / (halfW * 2))*shrink;
+      const spot=choices.find(([x,y])=>y-height*scale>=view.y+8 &&
+        (y < WADING_DEPTH || y-controlTop <= height*scale*.45) &&
+        (kind !== forestFocus || (x-halfW*scale>=view.x+8 && x+halfW*scale<=view.x+view.width-8)) &&
+        !hits(boxes,x-halfW*scale,x+halfW*scale,y-height*scale,y));
+      if (!spot) continue;
+      const seat=el('g',{class:'beast-seat'+(spot[1]>=WADING_DEPTH?' beast-wading':''), 'data-kind':kind, 'data-habitat':habitat,
+        'data-anchor-x':spot[0], 'data-anchor-y':spot[1],
+        transform:`translate(${spot[0]} ${spot[1]}) scale(${scale})`});
+      seat.appendChild(make());beasts.appendChild(seat);break;
+    }
   });
 };
 window.renderFocusStars = function () {
@@ -169,7 +241,8 @@ window.renderFocusStars = function () {
     if (day === TODAY) todays++; else earlier++;
   }));
   // 今天的排在前面，用最显眼的几个星位。
-  const boxes = textBoxesInViewBox(group.ownerSVGElement);
+  const boxes = [...textBoxesInViewBox(group.ownerSVGElement),
+                 ...viewBoxRects(group.ownerSVGElement, CONTROL_NODES)];
   const clear = ([x, y, radius]) => !hits(boxes, x - radius, x + radius, y - radius, y + radius);
   const usable = STAR_SEATS.filter(clear);
   const total = Math.min(todays + earlier, usable.length);
@@ -270,6 +343,7 @@ function buildRainforest() {
   if(backdropSource) {
     const backdrop=document.createElement('img');backdrop.className='rainforest-backdrop';
     backdrop.src=backdropSource;backdrop.alt='';backdrop.decoding='async';scene.appendChild(backdrop);
+    scene.classList.add('painted-rainforest');
   }
 
   // 构图沿上下两条边展开、中间给标题留空：窄屏时 slice 只保留中间一竖条，
@@ -323,14 +397,15 @@ function buildRainforest() {
   // 前三层是常态的雨；第四层 rain-squall 只在雨量接近满格时才浮现——
   // 190 条又长又快的雨丝，这才是"雨下得很大"看起来的样子。数量固定、常驻，
   // 靠透明度浮现，所以不会在骤雨来时重排 DOM 或重启动画。
-  [[46, 'rain-far', 1.2, 9], [38, 'rain-mid', .72, 21], [26, 'rain-near', .44, 38],
-   [190, 'rain-squall', .3, 74]].forEach(([count, cls, speed, length]) => {
+  [[46, 'rain-far', 1.2, 6], [38, 'rain-mid', .72, 14], [26, 'rain-near', .44, 27],
+   [190, 'rain-squall', .3, 34]].forEach(([count, cls, speed, length]) => {
     const layer = document.createElement('div');
     layer.className = 'rain-layer ' + cls;
     for (let i = 0; i < count; i++) {
       const drop = document.createElement('span');
       drop.style.left = (decorRand() * 106 - 3).toFixed(2) + '%';
       drop.style.setProperty('--len', (length + decorRand() * length*.6).toFixed(0) + 'px');
+      drop.style.setProperty('--drop-width',(.45+decorRand()*(cls==='rain-near'?1.1:.65)).toFixed(2)+'px');
       drop.style.animationDuration = (speed + decorRand() * speed*.35).toFixed(2) + 's';
       drop.style.animationDelay = '-' + (decorRand() * 1.4).toFixed(2) + 's';
       drop.style.opacity = (.3 + decorRand() * .55).toFixed(2);
@@ -463,14 +538,24 @@ function paintWeather(climate) {
   const wall = Math.max(0, Math.min(1, (rain - .55) / .38));
   style.setProperty('--squall', (wall * wall * (3 - 2 * wall)).toFixed(3));
   style.setProperty('--sun', sun.toFixed(3));
+  style.setProperty('--forest-exposure',(1 - rain*.14 + sun*.055).toFixed(3));
   // 彩虹不是独立天气，而是三件事同时成立：太阳出来、雨停了、空气还是湿的。
   const bow = sun * climate.wet * Math.max(0, 1 - rain * 3.2);
   style.setProperty('--rainbow', Math.min(1, bow * 1.9).toFixed(3));
   // 谁在什么天气现身：太阳→鹿，大雾→白狼，暴雨→夜行的巨神。
   const band = (value, from, to) => Math.max(0, Math.min(1, (value - from) / (to - from)));
-  style.setProperty('--deer', band(sun, .55, .92).toFixed(3));
-  style.setProperty('--wolf', (band(climate.mist, .72, .98) * (1 - Math.min(1, rain * 2))).toFixed(3));
-  style.setProperty('--night', band(rain, .82, 1).toFixed(3));
+  const deer = band(sun, .45, .70);
+  const newAppearance = deer > 0 && !deerWasVisible;
+  if (newAppearance) deerBank = 1 - deerBank;
+  deerWasVisible = deer > 0;
+  const focus = rain > .55 ? 'night' : deer > 0 ? 'deer' : climate.mist > .72 ? 'wolf' : forestFocus;
+  if (focus !== forestFocus || newAppearance) {
+    forestFocus = focus;
+    window.renderSpirits?.(); window.renderFocusStars?.();
+  }
+  style.setProperty('--deer', deer.toFixed(3));
+  style.setProperty('--wolf', (band(climate.mist, .54, .74) * (1 - Math.min(1, rain * 2))).toFixed(3));
+  style.setProperty('--night', band(rain, .60, .82).toFixed(3));
   for(const field of ['cloud','mist','wet','drip']) style.setProperty('--'+field,climate[field].toFixed(3));
   const gust=.7+.3*Math.sin(performance.now()/2100)+.1*Math.sin(performance.now()/770);
   style.setProperty('--wind-tilt',(wind*gust*4).toFixed(2)+'deg');

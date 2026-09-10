@@ -25,7 +25,9 @@ const TEXT_PREFS = Object.freeze(['title','signature','brand','tagline','eyebrow
   'goalHeading','rhythmHeading','musicEyebrow','footerNote','methodNote','musicUrl','musicTitle','fileName','customName','libraryTrack']);
 const DEFAULT_PREFS = Object.freeze({
   title:'每一点专注，都有自己的光。',
-  signature:'不必让每一天都满格。看见投入的时间，也给思考和休息留一点空间。',
+  // 标题下面那一句留空：这块位置留给音乐播放器（歌词、平台切换）。
+  // 个性签名这个功能没删——写了就显示，空着就完全不占位置。
+  signature:'',
   brand:'小银河', tagline:'', eyebrow:'', kpiToday:'', kpiWeek:'', kpiAvg:'',
   goalHeading:'按自己的节奏。', rhythmHeading:'你的活跃时段', musicEyebrow:'A LITTLE SOUND, A LITTLE SPACE',
   footerNote:'✦ 小银河 · 看见时间，而不是追赶时间', methodNote:'',
@@ -36,6 +38,15 @@ const DEFAULT_PREFS = Object.freeze({
   musicMode:'official', officialTrack:OFFICIAL_TRACKS[0].key, libraryTrack:'',
   musicUrl:'', musicTitle:OFFICIAL_TRACKS[0].name, fileName:'', volume:35, loop:true
 });
+/* 这四句原来是各场景的预设签名，不是谁一个字一个字写的。标题下面那块位置让给
+   播放器之后，浏览器里存着的旧偏好还会把同一句话搬回来——认出来就当没写过。
+   只在启动时清一次并存回去：之后你要是自己再写这句，它就一直留着。 */
+const RETIRED_SIGNATURES = Object.freeze([
+  '不必让每一天都满格。看见投入的时间，也给思考和休息留一点空间。',
+  '看见今天的投入，也为生活留出空白。',
+  '按照自己的节奏动起来。记录每一段运动，也记得好好恢复。',
+  '学习、阅读、创作，或者任何值得记录的小事。'
+]);
 function readPreferences() {
   let saved={};
   try { saved=JSON.parse(storage.get('preferences','{}')) || {}; } catch {}
@@ -57,10 +68,14 @@ function readPreferences() {
 }
 let preferences=readPreferences();
 function savePreferences() { return storage.set('preferences',JSON.stringify(preferences)); }
+function isRetiredSignature(text) { return RETIRED_SIGNATURES.includes(text.trim()); }
+if(isRetiredSignature(preferences.signature)) { preferences.signature=''; savePreferences(); }
 const nav=document.createElement('div'); nav.className='header-actions';
 nav.innerHTML='<button id="refresh-data" title="更新统计，不打断音乐">更新数据</button><button id="open-settings">个性化 <span aria-hidden="true">↗</span></button>';
 header.appendChild(nav);
-document.querySelector('.hero').insertAdjacentHTML('afterend', `
+/* 音乐是画板的最后一行，不是画板下面的另一张卡：没有自己的底板，
+   直接站在林子上，画一路铺到画板底边。 */
+document.querySelector('.hero').insertAdjacentHTML('beforeend', `
 <section class="music-card" aria-label="背景音乐">
   <div class="music-top"><div class="music-label"><span class="music-icon" aria-hidden="true">♫</span><div><div class="eyebrow" id="music-eyebrow">A LITTLE SOUND, A LITTLE SPACE</div><strong id="track-title"></strong><div class="muted" id="music-status" aria-live="polite">点击播放，让音乐陪你一会儿。</div><a id="music-external" target="_blank" rel="noopener noreferrer" hidden>在 YouTube 打开 ↗</a></div></div>
   <div class="music-actions"><button id="music-play" class="primary-button">播放</button><label class="volume-label" for="music-volume">音量 <input id="music-volume" type="range" min="0" max="100" step="1"></label><label class="loop-label"><input id="music-loop" type="checkbox"> 循环</label><button id="music-settings">换音乐</button></div></div>
@@ -212,7 +227,9 @@ function applyAppearance() {
   applyAccent();
   document.body.classList.toggle('compact',preferences.compact);
   document.getElementById('hero-title').textContent=preferences.title || DEFAULT_PREFS.title;
-  document.getElementById('hero-signature').textContent=preferences.signature;
+  const signature=document.getElementById('hero-signature');
+  signature.textContent=preferences.signature;
+  signature.hidden=!preferences.signature.trim();
   document.querySelector('.brand h1').textContent=preferences.brand || DEFAULT_PREFS.brand;
   document.getElementById('footer-note').textContent=preferences.footerNote;
   document.getElementById('music-eyebrow').textContent=preferences.musicEyebrow;

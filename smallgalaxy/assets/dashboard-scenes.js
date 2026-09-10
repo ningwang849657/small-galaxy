@@ -1,9 +1,9 @@
 /* Scene names never change what a data source measures. Manual entries stay separate. */
 const SCENES = {
   research:{name:'科研', source:'computer', title:'每一点专注，都有自己的光。', signature:DEFAULT_PREFS.signature, eyebrow:'YOUR RESEARCH, IN TIME'},
-  work:{name:'工作', source:'computer', title:'认真工作，也认真生活。', signature:'看见今天的投入，也为生活留出空白。', eyebrow:'A LITTLE MORE BALANCE'},
-  exercise:{name:'运动', source:'manual', title:'每一次出发，都算数。', signature:'按照自己的节奏动起来。记录每一段运动，也记得好好恢复。', eyebrow:'MOVE AT YOUR OWN PACE'},
-  custom:{name:'自定义', source:'manual', title:'把时间，留给你在意的事。', signature:'学习、阅读、创作，或者任何值得记录的小事。', eyebrow:'TIME FOR WHAT MATTERS'}
+  work:{name:'工作', source:'computer', title:'认真工作，也认真生活。', signature:'', eyebrow:'A LITTLE MORE BALANCE'},
+  exercise:{name:'运动', source:'manual', title:'每一次出发，都算数。', signature:'', eyebrow:'MOVE AT YOUR OWN PACE'},
+  custom:{name:'自定义', source:'manual', title:'把时间，留给你在意的事。', signature:'', eyebrow:'TIME FOR WHAT MATTERS'}
 };
 let computerData=DATA;
 function currentScene() {
@@ -161,7 +161,8 @@ function manualData(source,scene,entries=sessions) {
       active_seconds:active,fun_seconds:0,idle_seconds:span-active,total_presence_seconds:span,segments};
   })};
 }
-document.querySelector('.music-card').insertAdjacentHTML('afterend', `<section class="card manual-card" id="manual-card" hidden>
+// 挂在画板后面，不是挂在音乐行后面——音乐行已经住进画板里了。
+document.querySelector('.hero').insertAdjacentHTML('afterend', `<section class="card manual-card" id="manual-card" hidden>
   <div class="card-head"><div><div class="eyebrow">YOUR OWN RECORD</div><h2 id="manual-heading">记录一段活动</h2></div><button id="export-sessions" type="button">导出逐条记录 ↗</button></div>
   <form id="session-form"><input id="session-id" type="hidden"><div class="session-fields">
     <label>日期<input id="session-date" type="date" required></label><label>开始<input id="session-start" type="time" required></label><label>结束<input id="session-end" type="time" required></label>

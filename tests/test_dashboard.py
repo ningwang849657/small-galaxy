@@ -41,11 +41,20 @@ class DashboardTests(unittest.TestCase):
 
     def test_paintings_are_embedded_and_packaged(self):
         html=dashboard.render_html({'days':[]})
-        # 只剩一块画板，所以只内嵌一张画；顶栏那张已随画板一起去掉。
-        self.assertEqual(html.count('data:image/webp;base64,'),1)
-        self.assertTrue('__FOREST_ART__' not in html and '__RAINFOREST_ART__' not in html)
-        for name in ('forest-sanctuary.webp','rainforest.webp'):
+        # One canvas: one environment and three transparent weather-linked sprites.
+        self.assertEqual(html.count('data:image/webp;base64,'),4)
+        self.assertTrue(all(token not in html for token in ('__RAINFOREST_ART__','__DEER_ART__','__WOLF_ART__','__NIGHT_ART__')))
+        for name in ('rainforest-canyon.webp','forest-deer.webp','white-wolf.webp','night-walker.webp'):
             self.assertTrue((dashboard.asset_dir()/'art'/name).is_file())
+
+    def test_missing_paintings_keep_the_vector_fallback(self):
+        with patch.object(Path, 'read_bytes', side_effect=OSError('missing optional bitmap')):
+            html = dashboard.render_html({'days': []})
+        self.assertNotIn('data:image/webp;base64,', html)
+        for token in ('__RAINFOREST_ART__', '__DEER_ART__', '__WOLF_ART__', '__NIGHT_ART__'):
+            self.assertNotIn(token, html)
+        self.assertIn("paintedBeast('deer', '', 112, 136)", html)
+        self.assertIn('function forestDeer()', html)
 
     def test_avatar_missing_file_is_not_fatal(self):
         with patch.object(dashboard, 'AVATAR_PATH', Path('/nonexistent/avatar.jpg')):
