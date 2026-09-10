@@ -190,7 +190,12 @@ def render_html(data: dict) -> str:
     scripts = "".join("<script>" + (assets / name).read_text(encoding="utf-8") + "</script>"
                       for name in ("dashboard-enhancements.js", "dashboard-decor.js",
                                    "dashboard-personalization.js", "dashboard-scenes.js"))
-    for token, filename in (('__FOREST_ART__','forest-sanctuary.webp'), ('__RAINFOREST_ART__','rainforest.webp')):
+    for token, filename in (
+        ('__RAINFOREST_ART__', 'rainforest-canyon.webp'),
+        ('__DEER_ART__', 'forest-deer.webp'),
+        ('__WOLF_ART__', 'white-wolf.webp'),
+        ('__NIGHT_ART__', 'night-walker.webp'),
+    ):
         try:
             source = 'data:image/webp;base64,' + base64.b64encode((assets / 'art' / filename).read_bytes()).decode('ascii')
         except OSError:

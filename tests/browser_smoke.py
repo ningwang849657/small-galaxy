@@ -35,10 +35,83 @@ try {
  check(document.querySelectorAll('#hour-bars span').length===24,'hour bins');
  check(!document.querySelector('iframe'),'music must not contact YouTube before Play');
  check(document.getElementById('hero-title').querySelector('br')===null,'headline stays one line');
+ // 标题下面那句话默认不出现，位置留给音乐播放器；写了签名才现身。
+ check(document.getElementById('hero-signature').hidden,'the hero signature keeps out of the way when empty');
+ // 旧版本存进浏览器的预设签名会把那句话搬回来，认出来当没写过；自己写的一律留着。
+ check(isRetiredSignature('不必让每一天都满格。看见投入的时间，也给思考和休息留一点空间。'),
+   'the retired default signature is still recognised');
+ check(!isRetiredSignature('这是我的签名'),'a signature you wrote yourself is never dropped');
  // The painting is inlined locally; dynamic artwork never pulls an external asset.
  const rainArt=document.querySelector('.rainforest-backdrop');await rainArt.decode();
  check(rainArt.naturalWidth>1400,'painted rainforest decodes from its data URI');
  check(document.querySelectorAll('#forest-band .kodama').length>=4,'forest spirits drawn');
+ // The three small residents are real transparent paintings, not pale line icons.
+ const residents=[...document.querySelectorAll('.beast-portrait')];
+ // 相机不再跟着天气跑，所以窄屏上只住得下镜头里的那几位：整幅画都在框里时三位都要在。
+ const camera=()=>document.querySelector('#forest-band').viewBox.baseVal;
+ const wholePainting=camera().width>=1439;
+ check(residents.length===(wholePainting?3:residents.length) && residents.length>=1,
+   'painted residents are placed, got '+residents.length);
+ for(const portrait of residents) {
+   const source=portrait.getAttribute('href');check(source.startsWith('data:image/webp;base64,'),'resident is embedded');
+   const decoded=new Image();decoded.src=source;await decoded.decode();
+   const canvas=document.createElement('canvas');canvas.width=decoded.naturalWidth;canvas.height=decoded.naturalHeight;
+   const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(decoded,0,0);
+   check(ctx.getImageData(0,0,1,1).data[3]===0,'resident background has real transparency');
+   // 住民住在画里，不在音乐行上：边框用画的框，不是整块画板的框。
+   const box=portrait.getBoundingClientRect(),frame=document.querySelector('.rain-scene').getBoundingClientRect();
+   // Narrow screens pan to the active habitat; dormant residents stay in their
+   // real off-camera homes. Check every active resident below after each weather.
+   if(innerWidth>=1000) check(box.left>=frame.left && box.right<=frame.right && box.top>=frame.top && box.bottom<=frame.bottom,'resident is not sliced off');
+   // 身量按画的高度给：够壮观，但不至于压过整幅画。
+   check(box.height<=frame.height*.62,'a resident overwhelms the painting: '+Math.round(box.height/frame.height*100)+'%');
+   for(const selector of TEXT_NODES) {
+     const node=document.querySelector(selector);if(!node)continue;const text=tightRect(node);
+     check(box.right<=text.left || box.left>=text.right || box.bottom<=text.top || box.top>=text.bottom,'resident avoids '+selector);
+   }
+ }
+ const checkHabitat = kind => {
+   const seat=document.querySelector('.beast-seat[data-kind="'+kind+'"]');
+   // 家在镜头外就不出场——绝不为了露脸把谁挪到别处去。
+   const home=kind==='deer' ? [...DEER_BANKS[deerBank],...DEER_BANKS[1-deerBank]]
+     : BEASTS.find(beast=>beast.kind===kind).seats;
+   const view=camera(), atHome=home.some(([x])=>x>=view.x && x<=view.x+view.width);
+   // 窄屏上文字和播放器几乎占满画板，装不下就不出场——身量缩到一半以下不如不来。
+   check(seat || !atHome || innerWidth<1000,'resident exists in '+kind+' weather (bank '+deerBank+', focus '+forestFocus+', view '+document.querySelector('#forest-band').getAttribute('viewBox')+')');
+   if(!seat) return;
+   const x=Number(seat.dataset.anchorX),y=Number(seat.dataset.anchorY);
+   // 苔藓坡在大树脚下、画面 67–76% 宽处；再往右（1180+）是前景那几片大叶子，脚下没有地。
+   if(kind==='wolf') check(seat.dataset.habitat==='tree-roots' && x>=990 && x<=1075 && y>=358 && y<=382,'wolf stays on the mossy shelf at the tree foot');
+   if(kind==='night') check(seat.dataset.habitat==='deep-forest' && x>=640 && x<=680 && y>=295 && y<=310,'night walker stays in the innermost rainforest');
+   // 正对播放/循环下方那道浅滩，或者两侧的岸；绝不站到雾里去。
+   if(kind==='deer') {
+     check(seat.dataset.habitat==='riverbank'
+       && ((x>=290 && x<=340)||(x>=460 && x<=515)||(x>=415 && x<=450)||(x>=755 && x<=790))
+       && y>=325 && y<=440, 'deer stays in the ford or on a riverbank');
+     // 站在水里就该有涉水的画法：小腿化进水面、不打接地阴影。
+     check((y>=400)===seat.classList.contains('beast-wading'),'wading is drawn only when the deer is in the water');
+     if(y>=400) check(getComputedStyle(seat.querySelector('.beast-portrait')).maskImage.includes('gradient'),
+       'the submerged legs are masked into the water');
+   }
+   const box=seat.querySelector('.beast-portrait').getBoundingClientRect(), frame=document.querySelector('.rain-scene').getBoundingClientRect();
+   check(box.left>=frame.left && box.right<=frame.right && box.top>=frame.top && box.bottom<=frame.bottom,'active '+kind+' is fully in the camera');
+   for(const selector of TEXT_NODES) {
+     const node=document.querySelector(selector);if(!node)continue;const text=tightRect(node);
+     check(box.right<=text.left || box.left>=text.right || box.bottom<=text.top || box.top>=text.bottom,'active '+kind+' avoids '+selector);
+   }
+   const position=parseFloat(getComputedStyle(rainArt).objectPosition)/100;
+   check(Math.abs(view.x-(1440-view.width)*position)<.02,'background and residents share the same camera');
+ };
+ // 画面够大的时候，住民站在林子深处、身量撑得起画面；窄屏上退到岸边缩小是允许的。
+ const painting=document.querySelector('.rain-scene').getBoundingClientRect();
+ if(innerWidth>=1000) {
+   for(const portrait of residents) {
+     const feet=(portrait.getBoundingClientRect().bottom-painting.top)/painting.height;
+     check(feet<=.93,'a resident is standing on the very bottom edge again: '+Math.round(feet*100)+'%');
+   }
+   const tallest=Math.max(...residents.map(portrait=>portrait.getBoundingClientRect().height));
+   check(tallest>=painting.height*.34,'the biggest resident shrank back to a sticker: '+Math.round(tallest/painting.height*100)+'%');
+ }
  // 星不是装饰：每一段 ≥25 分钟的持续专注对应一颗，今天的那几颗更亮。
  const sustained=(day)=>day.segments.filter(s=>s.kind==='active'&&s.end_sec-s.start_sec>=1500).length;
  const todays=sustained(TODAY), all=DATA.days.reduce((n,d)=>n+sustained(d),0);
@@ -55,10 +128,27 @@ try {
  // 常态三层 110 条 + 雨墙 190 条；雨墙常驻 DOM，靠透明度浮现，不在骤雨来时重排。
  const baseDrops=['far','mid','near'].reduce((n,k)=>n+document.querySelectorAll('.rain-'+k+' span').length,0);
  check(baseDrops===110,'the everyday rain layers are drawn, got '+baseDrops);
- // One canvas only: the header row lives inside the hero, sharing its painting.
+ // One canvas only: the header row and the music row both live inside the hero.
  const hero=document.querySelector('.hero');
  check(!document.querySelector('.forest-sanctuary'),'the second art panel is gone');
  check(document.querySelector('header').parentElement===hero,'the header row sits inside the one canvas');
+ check(document.querySelector('.music-card').parentElement===hero,'the music row sits inside the one canvas');
+ // 音乐行没有底板：画一路铺到画板底边，控件直接浮在林子上。
+ const musicCard=document.querySelector('.music-card');
+ const musicBox=musicCard.getBoundingClientRect();
+ const sceneBox=document.querySelector('.rain-scene').getBoundingClientRect();
+ check(sceneBox.bottom>=musicBox.bottom-1,'the painting runs under the music row');
+ const plate=getComputedStyle(musicCard).backgroundColor;
+ check(plate==='rgba(0, 0, 0, 0)' || plate==='transparent','the music row grew a background plate again: '+plate);
+ // 底板去掉了，雾也去掉了：画上什么都不铺，字靠自己那圈光站住。
+ check(getComputedStyle(document.querySelector('.rain-scene'),'::before').content==='none',
+   'a scrim came back under the music row');
+ check(getComputedStyle(document.getElementById('track-title')).textShadow.split('rgb').length>4,
+   'the floating text lost its halo');
+ // 画板按画的比例长，整幅雨林都在框里；窄屏放不下 3:1 时不强求。
+ const art=document.querySelector('.rainforest-backdrop');
+ if(innerWidth>=1000) check(Math.abs(sceneBox.width/sceneBox.height-art.naturalWidth/art.naturalHeight)<.03,
+   'the painting is cropped again: panel is '+(sceneBox.width/sceneBox.height).toFixed(2)+':1');
  check(document.querySelector('#forest-band').closest('.rain-scene'),'the spirits moved into the rainforest');
  check(Number(getComputedStyle(document.querySelector('.rainforest-backdrop')).opacity)<1,
    'the painting stays a wash, not a full-strength photo');
@@ -79,7 +169,7 @@ try {
  check(pairCols===(innerWidth>=1700?2:1),'the two charts pair up only on wide screens');
  const topGap=Math.round(document.querySelector('.hero').getBoundingClientRect().top+scrollY);
  check(topGap>0,'the first panel is not flush against the top edge');
- const rhythm=[topGap,gapOf('.hero','.music-card'),gapOf('.music-card','.kpi-row'),gapOf('.kpi-row','.insight-grid')];
+ const rhythm=[topGap,gapOf('.hero','.kpi-row'),gapOf('.kpi-row','.insight-grid')];
  check(rhythm.every(gap=>gap===rhythm[0]),'sections share one vertical rhythm, got '+rhythm.join('/'));
  // First-run guidance appears only when nothing has ever been recorded.
  check(document.getElementById('first-run').hidden,'no first-run card once data exists');
@@ -122,10 +212,29 @@ try {
  // 雨墙是"暴雨"专属的第四层：小雨时必须完全不出现，否则大雨就不特别了。
  const squallLevel=()=>Number(getComputedStyle(document.querySelector('.rain-scene')).getPropertyValue('--squall'));
  check(document.querySelectorAll('.rain-squall span').length===190,'the squall layer is dense');
+ // 天气变了画不能动：镜头只跟版面走，不跟住民走，否则每次换天气整幅画都横移一下。
+ const cameraBefore=document.querySelector('#forest-band').getAttribute('viewBox');
+ const framingBefore=getComputedStyle(rainArt).objectPosition;
+ for(const phase of [0,.2,.35,.5,.62,.8,.95]) paintWeather(weatherAt(phase));
+ check(document.querySelector('#forest-band').getAttribute('viewBox')===cameraBefore
+   && getComputedStyle(rainArt).objectPosition===framingBefore,
+   'the painting slid sideways when the weather changed');
  window.applyWeatherSettings('drizzle',96); check(squallLevel()===0,'no wall of rain in a drizzle');
  window.applyWeatherSettings('storm',96); check(rainLevel()>.9,'fixed storm');
  check(squallLevel()>.9,'a storm brings the full wall of rain');
  window.applyWeatherSettings('clear',96); check(rainLevel()===0,'fixed clear sky');
+ check(Number(rainScene.style.getPropertyValue('--deer'))===1 && Number(rainScene.style.getPropertyValue('--night'))===0,'sunlight still summons the deer');
+ checkHabitat('deer');
+ const bankDuringSun=deerBank;paintWeather(FIXED_WEATHER.clear);
+ check(deerBank===bankDuringSun,'a sunny weather tick never teleports the deer');
+ window.applyWeatherSettings('storm',96);
+ check(Number(rainScene.style.getPropertyValue('--night'))===1 && Number(rainScene.style.getPropertyValue('--wolf'))===0,'storm still summons the night walker');
+ checkHabitat('night');
+ clearInterval(weatherTimer);paintWeather(weatherAt(.58));
+ check(Number(rainScene.style.getPropertyValue('--wolf'))>.95,'post-rain mist still summons the wolf');
+ checkHabitat('wolf');
+ paintWeather(FIXED_WEATHER.clear);checkHabitat('deer');
+ check(deerBank!==bankDuringSun,'the next sunny appearance can use the other riverbank');
  check(document.querySelectorAll('.canopy-drips span').length===16,'leaf tip drips');
  check(document.querySelectorAll('.sun-shafts span').length===5,'canopy-filtered sun shafts');
  window.applyDecorSettings(false);check(weatherTimer===0,'hidden decoration stops the climate timer');
@@ -374,11 +483,13 @@ with tempfile.TemporaryDirectory(prefix='galaxy-test-') as tmp:
         data = dashboard.build_dashboard_data()
     page = Path(tmp) / 'test.html'
     online='--online-music' in sys.argv
+    preview='--art-preview' in sys.argv
     online_checks='''<script>playButton.onclick(); setInterval(()=>{
       if(youtubeState===1) document.body.setAttribute('data-test-result','PASS');
       if(musicStatus.textContent.includes('无法') || musicStatus.textContent.includes('未能')) document.body.setAttribute('data-test-result','FAIL: '+musicStatus.textContent);
     },200);</script>'''
-    page.write_text(dashboard.render_html(data).replace('</body>', (online_checks if online else CHECKS)+'</body>'))
+    checks=online_checks if online else '<script>document.body.dataset.testResult="PASS";</script>' if preview else CHECKS
+    page.write_text(dashboard.render_html(data).replace('</body>', checks+'</body>'))
     # A generated silent WAV on disk stands in for the user's own music library.
     music=Path(tmp)/'music';music.mkdir()
     header=(b'RIFF'+(16036).to_bytes(4,'little')+b'WAVEfmt '+(16).to_bytes(4,'little')
@@ -392,7 +503,7 @@ with tempfile.TemporaryDirectory(prefix='galaxy-test-') as tmp:
         server=ThreadingHTTPServer(('127.0.0.1',0),dashboard_server.Handler)
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         try:
-            for width in ((1440,) if online else (1440,390)):
+            for width in ((1440,) if online else (1440,390,2560)):
                 profile=Path(tmp)/str(width)
                 process=subprocess.Popen(['google-chrome','--headless','--no-sandbox','--disable-gpu','--mute-audio',
                     '--user-data-dir='+str(profile),'--remote-debugging-port=0','--autoplay-policy=no-user-gesture-required',
@@ -437,13 +548,14 @@ with tempfile.TemporaryDirectory(prefix='galaxy-test-') as tmp:
                     shot=cdp('Page.captureScreenshot',{'format':'png'})
                     Path(f'/tmp/galaxy-personalized-{width}.png').write_bytes(base64.b64decode(shot['result']['data']))
                     if not online:
-                        for weather in ('storm','clear'):
-                            cdp('Runtime.evaluate',{'expression':f"applyWeatherSettings('{weather}',96);"})
-                            time.sleep(.4)
+                        for weather in ('storm','clear','mist'):
+                            expression="clearInterval(weatherTimer);paintWeather(weatherAt(.58));" if weather=='mist' else f"applyWeatherSettings('{weather}',96);"
+                            cdp('Runtime.evaluate',{'expression':expression})
+                            time.sleep(2.4)
                             shot=cdp('Page.captureScreenshot',{'format':'png'})
                             Path(f'/tmp/galaxy-{weather}-{width}.png').write_bytes(base64.b64decode(shot['result']['data']))
                         cdp('Runtime.evaluate',{'expression':"preferences.theme='night';applyAppearance();applyWeatherSettings('storm',96);"})
-                        time.sleep(.4)
+                        time.sleep(2.4)
                         shot=cdp('Page.captureScreenshot',{'format':'png'})
                         Path(f'/tmp/galaxy-night-{width}.png').write_bytes(base64.b64decode(shot['result']['data']))
                         cdp('Runtime.evaluate',{'expression':"preferences={...DEFAULT_PREFS};applyAppearance();"})
@@ -457,7 +569,7 @@ with tempfile.TemporaryDirectory(prefix='galaxy-test-') as tmp:
                         cdp('Runtime.evaluate',{'expression':"openSettings(); document.getElementById('setting-title').focus();"})
                         shot=cdp('Page.captureScreenshot',{'format':'png'})
                         Path(f'/tmp/galaxy-settings-{width}.png').write_bytes(base64.b64decode(shot['result']['data']))
-                    print('Official YouTube track reached PLAYING' if online else f'{width}px: animation increase/decrease/interruption/reduced-motion, scene isolation, manual add/edit/delete/undo, settings, music, refresh and export PASS')
+                    print('Official YouTube track reached PLAYING' if online else f'{width}px: artwork previews saved (interaction checks skipped)' if preview else f'{width}px: animation increase/decrease/interruption/reduced-motion, scene isolation, manual add/edit/delete/undo, settings, music, refresh and export PASS')
                 finally:
                     if socket: socket.close()
                     process.terminate();process.wait(timeout=10)
